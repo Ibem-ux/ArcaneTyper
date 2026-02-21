@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TyperMaster - Arcane Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div id="app">
+    <div id="game-container">
+      <!-- HUD Overlay -->
+      <div id="hud" class="hidden">
+        <div class="stat-box">
+          <span class="label">SCORE</span>
+          <span id="score-display" class="value">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">WPM</span>
+          <span id="wpm-display" class="value">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">ACCURACY</span>
+          <span id="acc-display" class="value">100%</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">BARRIERS</span>
+          <div id="lives-display" class="lives-container">
+            <span class="barrier"></span><span class="barrier"></span><span class="barrier"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start Menu -->
+      <div id="start-menu" class="overlay-menu active">
+        <h1>ARCANE<span class="highlight">TYPER</span></h1>
+        <p class="subtitle">Enchanted Library Edition</p>
+        <div class="stats-overview">
+          <p>Mastery Score: <span id="menu-best-score">0</span></p>
+          <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
+        </div>
+        <button id="start-btn" class="primary-btn">OPEN THE GRIMOIRE</button>
+      </div>
+
+      <!-- Game Over Menu -->
+      <div id="game-over-menu" class="overlay-menu hidden">
+        <h2>SPELLBROKEN</h2>
+        <div class="final-stats">
+          <div class="stat-row"><span>Final Mastery:</span> <span id="go-score">0</span></div>
+          <div class="stat-row"><span>Speed (WPM):</span> <span id="go-wpm">0</span></div>
+          <div class="stat-row"><span>Accuracy:</span> <span id="go-acc">0%</span></div>
+        </div>
+        <button id="restart-btn" class="primary-btn">CAST AGAIN</button>
+      </div>
+
+      <!-- The Game Canvas -->
+      <canvas id="game-canvas"></canvas>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
