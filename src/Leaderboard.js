@@ -9,7 +9,8 @@ export class Leaderboard {
             easy: { score: [], wpm: [], accuracy: [] },
             normal: { score: [], wpm: [], accuracy: [] },
             hard: { score: [], wpm: [], accuracy: [] },
-            hell: { score: [], wpm: [], accuracy: [] }
+            hell: { score: [], wpm: [], accuracy: [] },
+            scribe: { score: [], wpm: [], accuracy: [] }
         };
     }
 
@@ -20,6 +21,9 @@ export class Leaderboard {
                 const parsed = JSON.parse(stored);
                 // Basic validation
                 if (parsed && typeof parsed === 'object' && parsed.easy) {
+                    if (!parsed.scribe) {
+                        parsed.scribe = { score: [], wpm: [], accuracy: [] };
+                    }
                     return parsed;
                 }
             } catch (e) {

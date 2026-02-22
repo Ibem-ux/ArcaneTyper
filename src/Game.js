@@ -26,6 +26,8 @@ export class Game {
         this.isRunning = false;
         this.animationFrameId = null;
 
+        this.playerAnimTimer = 0;
+
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
 
@@ -122,6 +124,10 @@ export class Game {
             this.bossDimensionAlpha = Math.min(1, this.bossDimensionAlpha + dt * 0.001); // 1-second fade
         } else if (!this.isBossPhase && this.bossDimensionAlpha > 0) {
             this.bossDimensionAlpha = Math.max(0, this.bossDimensionAlpha - dt * 0.001);
+        }
+
+        if (this.playerAnimTimer > 0) {
+            this.playerAnimTimer = Math.max(0, this.playerAnimTimer - dt);
         }
 
         // Boss Logic
@@ -257,6 +263,35 @@ export class Game {
         // Clear shadow for wizard
         this.ctx.shadowBlur = 0;
 
+        // Draw Staff
+        this.ctx.save();
+
+        // Animation logic (raise staff quickly, then ease down)
+        const animProgress = this.playerAnimTimer > 0 ? this.playerAnimTimer / 200 : 0;
+        const staffAngle = (Math.PI / 6) * (1 - animProgress); // Rest = ~30 deg right (PI/6), Raised = 0 deg
+
+        // Position of wizard hand holding the staff
+        const staffBaseX = wizX + 10;
+        const staffBaseY = wizY - 5; // A bit up from the bottom
+
+        this.ctx.translate(staffBaseX, staffBaseY);
+        this.ctx.rotate(staffAngle);
+
+        // Draw pole
+        this.ctx.fillStyle = '#4a3320'; // Dark brown wood
+        this.ctx.fillRect(-2, -40, 5, 45); // 45px long
+
+        // Draw gem at top
+        this.ctx.beginPath();
+        this.ctx.arc(0, -42, 6, 0, Math.PI * 2);
+        this.ctx.fillStyle = '#ff00ff'; // Magic gem color (magenta-ish to match theme)
+        this.ctx.shadowColor = '#ff00ff';
+        this.ctx.shadowBlur = 15;
+        this.ctx.fill();
+
+        this.ctx.restore();
+        this.ctx.shadowBlur = 0; // Reset shadow for wizard
+
         // Draw Wizard Silhouette
         this.ctx.fillStyle = '#110a17'; // very dark purple/black
         this.ctx.strokeStyle = '#3a2b52';
@@ -288,15 +323,15 @@ export class Game {
             this.boss.draw(this.ctx);
         }
 
-        // Draw projectiles
-        this.projectiles.forEach(p => p.draw(this.ctx));
-
         // Draw all words
         // Draw untargeted first so targeted is always on top
         this.words.forEach(word => !word.isTargeted && word.draw(this.ctx));
         if (this.targetedWord) {
             this.targetedWord.draw(this.ctx);
         }
+
+        // Draw projectiles AFTER words so magic bullets appear on top
+        this.projectiles.forEach(p => p.draw(this.ctx));
 
         // Draw particles on top of words
         this.particles.forEach(p => p.draw(this.ctx));
@@ -408,11 +443,17 @@ export class Game {
                 // Spawn particle burst at word's location
                 this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors);
 
+                // Trigger "raise staff" animation
+                this.playerAnimTimer = 200; // 200ms
+
                 // If this was a boss attack (bullet), fire a projectile back at the boss
                 if (this.isBossPhase && this.boss && !this.boss.isDead && word.isBossAttack) {
-                    const startX = this.canvas.width / 2;
-                    const startY = this.canvas.height; // Fired by player
-                    const projectile = new Projectile(startX, startY, this.boss.x, this.boss.y, word.elementColors.particles);
+                    // Fire from the raised staff tip (wizX + 10, wizY - 45)
+                    const startX = this.canvas.width / 2 + 10;
+                    const startY = this.canvas.height - 45;
+                    // Target slightly off-center to avoid perfectly overlapping paths with incoming words
+                    const targetXOffset = (Math.random() - 0.5) * 100; // Spread projectiles out along the boss
+                    const projectile = new Projectile(startX, startY, this.boss.x + targetXOffset, this.boss.y + 20, word.elementColors.particles);
                     this.projectiles.push(projectile);
                 }
 

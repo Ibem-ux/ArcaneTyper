@@ -1,16 +1,19 @@
 import './style.css';
 import { Game } from './Game.js';
 import { Leaderboard } from './Leaderboard.js';
+import { Scribe } from './Scribe.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const game = new Game('game-canvas');
   const leaderboard = new Leaderboard();
+  const scribe = new Scribe(game.dictionary, game.stats); // Share dictionary
 
   // UI Elements
   const hud = document.getElementById('hud');
   const startMenu = document.getElementById('start-menu');
   const gameOverMenu = document.getElementById('game-over-menu');
   const leaderboardMenu = document.getElementById('leaderboard-menu');
+  const practiceUi = document.getElementById('practice-ui');
 
   // Menu Stats
   const menuBestScore = document.getElementById('menu-best-score');
@@ -26,8 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const playerNameInput = document.getElementById('player-name-input');
   const submitScoreBtn = document.getElementById('submit-score-btn');
 
+  const scribeHighscoreForm = document.getElementById('scribe-highscore-form');
+  const scribeNameInput = document.getElementById('scribe-name-input');
+  const scribeSubmitBtn = document.getElementById('scribe-submit-btn');
+
   // Buttons
   const startBtn = document.getElementById('start-btn');
+  const practiceBtn = document.getElementById('practice-btn');
+  const practiceReturnBtn = document.getElementById('practice-return-btn');
+  const practiceRetryBtn = document.getElementById('practice-retry-btn');
   const restartBtn = document.getElementById('restart-btn');
   const openLeaderboardBtn = document.getElementById('open-leaderboard-btn');
   const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
@@ -38,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
 
   let pendingStats = null; // Store stats if they get a high score
+  let pendingScribeStats = null;
 
   // Initialize Menu with local stats (from previous simple logic)
   function updateMenuStats() {
@@ -55,11 +66,42 @@ document.addEventListener('DOMContentLoaded', () => {
     gameOverMenu.classList.add('hidden');
     leaderboardMenu.classList.remove('active');
     leaderboardMenu.classList.add('hidden');
+    practiceUi.classList.remove('active');
+    practiceUi.classList.add('hidden');
 
     hud.classList.remove('hidden');
 
     const selectedDifficulty = difficultySelect.value;
     game.start(selectedDifficulty);
+  }
+
+  // Practice Mode Flow
+  function startPractice() {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+
+    // Show practice UI
+    practiceUi.classList.remove('hidden');
+    practiceUi.classList.add('active');
+
+    scribeHighscoreForm.classList.add('hidden');
+    practiceRetryBtn.classList.remove('hidden');
+    practiceReturnBtn.classList.remove('hidden');
+
+    // Make sure click focus is off buttons so Spacebar doesn't trigger clicks
+    practiceBtn.blur();
+    practiceRetryBtn.blur();
+
+    scribe.start();
+  }
+
+  function quitPractice() {
+    scribe.stop();
+    practiceUi.classList.remove('active');
+    practiceUi.classList.add('hidden');
+
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
   }
 
   // Handle Game Over internally from Game.js
@@ -105,15 +147,47 @@ document.addEventListener('DOMContentLoaded', () => {
     openLeaderboard('score');
   });
 
+  // Scribe Form Highscore Logic
+  scribe.onTrialComplete = (wpm, accuracy) => {
+    const scribeScore = Math.floor(wpm * (accuracy / 100));
+    if (leaderboard.isTop10('scribe', scribeScore, wpm, accuracy)) {
+      scribeHighscoreForm.classList.remove('hidden');
+      practiceRetryBtn.classList.add('hidden');
+      practiceReturnBtn.classList.add('hidden');
+      pendingScribeStats = { wpm, accuracy, score: scribeScore };
+      scribeNameInput.value = "";
+      scribeNameInput.focus();
+    } else {
+      scribeHighscoreForm.classList.add('hidden');
+      practiceRetryBtn.classList.remove('hidden');
+      practiceReturnBtn.classList.remove('hidden');
+    }
+  };
+
+  scribeSubmitBtn.addEventListener('click', () => {
+    if (!pendingScribeStats) return;
+    const name = scribeNameInput.value.trim() || 'Anonymous Scribe';
+    leaderboard.addScore('scribe', name, pendingScribeStats.score, pendingScribeStats.wpm, pendingScribeStats.accuracy);
+
+    scribeHighscoreForm.classList.add('hidden');
+    practiceRetryBtn.classList.remove('hidden');
+    practiceReturnBtn.classList.remove('hidden');
+    pendingScribeStats = null;
+
+    quitPractice();
+    openLeaderboard('wpm', 'scribe');
+  });
+
   // Leaderboard Logic
-  function openLeaderboard(category = 'score') {
+  function openLeaderboard(category = 'score', forceDifficulty = null) {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
     leaderboardMenu.classList.remove('hidden');
     leaderboardMenu.classList.add('active');
 
-    // Default the specific difficulty to whatever they played last
-    if (game.difficulty) {
+    if (forceDifficulty) {
+      leaderboardDifficultyFilter.value = forceDifficulty;
+    } else if (game.difficulty && leaderboardDifficultyFilter.value !== 'scribe') {
       leaderboardDifficultyFilter.value = game.difficulty;
     }
 
@@ -157,6 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Event Listeners
   startBtn.addEventListener('click', startGame);
   restartBtn.addEventListener('click', startGame);
+  practiceBtn.addEventListener('click', startPractice);
+  practiceReturnBtn.addEventListener('click', quitPractice);
+  practiceRetryBtn.addEventListener('click', startPractice);
   openLeaderboardBtn.addEventListener('click', () => openLeaderboard('score'));
   closeLeaderboardBtn.addEventListener('click', () => {
     leaderboardMenu.classList.remove('active');
@@ -175,6 +252,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeTab = document.querySelector('.tab-btn.active');
     if (activeTab) {
       renderLeaderboard(activeTab.dataset.category);
+    }
+  });
+
+  // Global keydown routing
+  window.addEventListener('keydown', (e) => {
+    // Route typing events to practice mode if it is active
+    if (scribe.isRunning) {
+      scribe.handleKeyDown(e);
+      // Prevent scroll if space is hit
+      if (e.key === ' ') e.preventDefault();
+    }
+
+    // Escape to quit
+    if (e.key === 'Escape' && scribe.isRunning) {
+      quitPractice();
     }
   });
 });

@@ -39,7 +39,7 @@
       <!-- Start Menu -->
       <div id="start-menu" class="overlay-menu active">
         <h1>ARCANE<span class="highlight">TYPER</span></h1>
-        <p class="subtitle">Enchanted Library Edition - v1.3.0</p>
+        <p class="subtitle">Enchanted Library Edition - v1.4.0</p>
         <div class="stats-overview">
           <p>Mastery Score: <span id="menu-best-score">0</span></p>
           <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
@@ -53,9 +53,14 @@
             <option value="hell">Cataclysm (Hell)</option>
           </select>
         </div>
-        <div class="button-group">
-          <button id="start-btn" class="primary-btn">OPEN THE GRIMOIRE</button>
-          <button id="open-leaderboard-btn" class="primary-btn">HALL OF FAME</button>
+        <div class="button-group"
+          style="display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 15px); width: 100%; max-width: 300px;">
+          <button id="start-btn" class="primary-btn">ARCANE DEFENSE (NORMAL)</button>
+          <button id="practice-btn" class="primary-btn"
+            style="background: linear-gradient(45deg, #1e0b2b, #4a2c68); border-color: #b892b0;">THE SCRIBE'S TRIAL
+            (PRACTICE)</button>
+          <button id="open-leaderboard-btn" class="primary-btn" style="margin-top: clamp(8px, 1.5vh, 15px);">HALL OF
+            FAME</button>
         </div>
       </div>
 
@@ -90,6 +95,7 @@
             <option value="normal" selected>Adept</option>
             <option value="hard">Archmage</option>
             <option value="hell">Cataclysm</option>
+            <option value="scribe">The Scribe's Trial</option>
           </select>
         </div>
         <div class="leaderboard-tabs">
@@ -114,6 +120,52 @@
           </table>
         </div>
         <button id="close-leaderboard-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
+      </div>
+
+      <!-- Scribe's Trial UI -->
+      <div id="practice-ui" class="overlay-menu hidden"
+        style="background: rgba(10, 5, 15, 0.95); justify-content: flex-start; padding-top: 10vh;">
+        <div class="practice-header"
+          style="display: flex; justify-content: space-between; width: 80%; max-width: 800px; margin-bottom: 2rem;">
+          <h2 style="margin: 0; color: #b892b0; font-size: 1.5rem;">THE SCRIBE'S TRIAL</h2>
+          <div style="display: flex; gap: 20px; font-family: monospace; font-size: 1.2rem; color: #ffd700;">
+            <div>WPM: <span id="practice-wpm">0</span></div>
+            <div>ACC: <span id="practice-acc">100</span>%</div>
+          </div>
+        </div>
+
+        <div id="practice-text-container"
+          style="width: 80%; max-width: 800px; font-size: 1.4rem; color: #666; line-height: 1.6; text-align: left; position: relative;">
+          <!-- Words injected here via JS -->
+        </div>
+
+        <div style="margin-top: 3rem; color: #888; font-size: 0.9rem;">
+          Continue typing to cast. Press <kbd style="background: #333; padding: 2px 6px; border-radius: 4px;">Esc</kbd>
+          to end trial.
+        </div>
+
+        <!-- Practice Results -->
+        <div id="practice-results" class="hidden"
+          style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #110a17; padding: clamp(1rem, 5vh, 3rem); border: 2px solid #b892b0; border-radius: 12px; text-align: center; box-shadow: 0 0 30px rgba(184, 146, 176, 0.3);">
+          <h2 style="color: #ffd700; margin-bottom: 1.5rem;">TRIAL COMPLETE</h2>
+          <div style="font-size: 1.5rem; margin-bottom: 1rem;">Final Speed: <span id="practice-res-wpm"
+              style="color: #ffd700;">0</span> WPM</div>
+          <div style="font-size: 1.2rem; margin-bottom: 1rem;">Accuracy: <span id="practice-res-acc"
+              style="color: #00bfa5;">100</span>%</div>
+
+          <div id="scribe-highscore-form" class="hidden"
+            style="margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <h3 style="color: var(--accent-primary); letter-spacing: 2px;">NEW LEGEND!</h3>
+            <input type="text" id="scribe-name-input" maxlength="15" placeholder="Anonymous Scribe"
+              style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent-primary); color: white; padding: 8px 15px; text-align: center; border-radius: 5px; width: 100%;" />
+            <button id="scribe-submit-btn" class="primary-btn" style="padding: 10px 20px;">SEAL IN HISTORY</button>
+          </div>
+
+          <div style="display: flex; justify-content: center; gap: 10px;">
+            <button id="practice-return-btn" class="primary-btn">ARCHIVES</button>
+            <button id="practice-retry-btn" class="primary-btn">PRACTICE AGAIN</button>
+          </div>
+        </div>
       </div>
 
       <!-- The Game Canvas -->

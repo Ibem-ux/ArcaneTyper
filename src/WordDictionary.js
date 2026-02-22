@@ -23,6 +23,17 @@ export const wordList = {
     "phantasmagoria", "prestidigitation", "unfathomable", "luminescence",
     "transmogrification", "indestructible", "quintessence", "doppelganger",
     "necronomicon", "omniscient", "apocalyptic", "extraterrestrial"
+  ],
+  paragraphs: [
+    "In the ancient days before the sundering of the realms, mages did not cast spells so much as they spoke to the fundamental forces of the world. Fire was a tempestuous companion that required coaxing, and water was a stubborn friend that only yielded to the most patient of voices. To be a sorcerer was to be a diplomat to the elements themselves.",
+
+    "The grand archives of the Citadel contain knowledge that spans millennia. Some scrolls are so saturated with magical theory that they hum with an inner light, casting long shadows in the cavernous halls. It is said that reading them without the proper protective wards can cause a scholar's mind to detach from their physical form entirely.",
+
+    "A true master of the arcane arts understands that power is not merely the violent expulsion of energy, but the subtle manipulation of probability. A fireball is impressive, certainly, but untying the threads of fate to ensure an enemy's blade misses your heart by a fraction of an inch requires a precision that takes decades to cultivate.",
+
+    "When the sky turned crimson and the stars began to fall like burning tears, the High Council realized their hubris. They had attempted to bind a creature from beyond the veil, a being of pure thought and malevolence. Now, the very fabric of reality was tearing at the seams, and only a unified incantation could seal the breach before the world was consumed.",
+
+    "To forge a staves of true power, one must gather the heartwood of an ironbark tree struck by lightning, the core of a fallen star, and the willing tear of a dragon. Once assembled, the artifact must be submerged in the waters of the abyssal depth for a full lunar cycle, absorbing the quiet crushing pressure of the deep dark."
   ]
 };
 
@@ -53,5 +64,10 @@ export class WordDictionary {
     const word1 = list1[Math.floor(Math.random() * list1.length)];
     const word2 = list2[Math.floor(Math.random() * list2.length)];
     return `${word1}-${word2}`;
+  }
+
+  getRandomParagraph() {
+    const list = this.words.paragraphs;
+    return list[Math.floor(Math.random() * list.length)];
   }
 }

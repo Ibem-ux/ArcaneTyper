@@ -148,6 +148,26 @@ export class Word {
             ctx.scale(1.5, 1.5);
         }
 
+        // Draw text background to ensure it's always readable over projectiles
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Semi-transparent black box
+        const paddingX = 10;
+        const totalTextWidth = this._cachedTypedWidth + ctx.measureText(this.untyped).width;
+        const boxWidth = totalTextWidth + paddingX * 2;
+        const boxHeight = 40;
+
+        // Center the box precisely under the text
+        const boxX = startX - paddingX;
+        const boxY = textYOffset - boxHeight / 2;
+
+        // Draw rounded rect behind text
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 5);
+        } else {
+            ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        }
+        ctx.fill();
+
         // Draw typed part (dimmed white)
         ctx.fillStyle = this.isTargeted ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)';
         ctx.fillText(this.typed, startX, textYOffset);

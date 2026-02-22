@@ -29,8 +29,8 @@ export class Projectile {
             this.trail.shift();
         }
 
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
+        this.x += this.vx * (dt / 1000);
+        this.y += this.vy * (dt / 1000);
 
         // Check if we reached/passed the target (roughly)
         // Since we are shooting UP at the boss, checking Y is easiest.
