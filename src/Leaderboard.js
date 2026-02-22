@@ -4,7 +4,6 @@ const LOCAL_KEY = 'typermaster_hall_of_fame_v2';
 
 export class Leaderboard {
     constructor() {
-        // Local cache for instant UI renders — fallback when offline
         this._local = this._loadLocal();
     }
 
@@ -62,8 +61,8 @@ export class Leaderboard {
     // ─── Public API (all async) ─────────────────────────────────────────────
 
     /**
-     * Returns top 10 entries for a given difficulty + category.
-     * Tries Supabase first, falls back to localStorage.
+     * Returns top 10 entries for a given difficulty, sorted by the given category field.
+     * 1 row per player — no duplicates.
      */
     async getTopScores(difficulty, category) {
         if (supabase) {
@@ -72,7 +71,6 @@ export class Leaderboard {
                     .from('leaderboard')
                     .select('name, score, wpm, accuracy, created_at')
                     .eq('difficulty', difficulty)
-                    .eq('category', category)
                     .order(category, { ascending: false })
                     .limit(10);
 
@@ -81,51 +79,46 @@ export class Leaderboard {
                 console.warn('[Leaderboard] Supabase fetch failed, using local cache.', e);
             }
         }
-        // Fallback: local cache
         return this._local[difficulty]?.[category] || [];
     }
 
     /**
-     * Checks if a score qualifies for the global top 10.
-     * Tries Supabase first, falls back to localStorage.
+     * Checks if a score qualifies for the global top 10 in any category.
      */
     async isTop10(difficulty, score, wpm, accuracy) {
         if (score === 0) return false;
 
         if (supabase) {
             try {
-                // Check each category
-                const checks = await Promise.all([
-                    supabase.from('leaderboard').select('score').eq('difficulty', difficulty).eq('category', 'score').order('score', { ascending: false }).limit(10),
-                    supabase.from('leaderboard').select('wpm').eq('difficulty', difficulty).eq('category', 'wpm').order('wpm', { ascending: false }).limit(10),
-                    supabase.from('leaderboard').select('accuracy').eq('difficulty', difficulty).eq('category', 'accuracy').order('accuracy', { ascending: false }).limit(10),
+                // Get the current 10th-place entries for each sorting column
+                const [scoreRes, wpmRes, accRes] = await Promise.all([
+                    supabase.from('leaderboard').select('score').eq('difficulty', difficulty).order('score', { ascending: false }).limit(10),
+                    supabase.from('leaderboard').select('wpm').eq('difficulty', difficulty).order('wpm', { ascending: false }).limit(10),
+                    supabase.from('leaderboard').select('accuracy').eq('difficulty', difficulty).order('accuracy', { ascending: false }).limit(10),
                 ]);
 
-                const [scoreRes, wpmRes, accRes] = checks;
+                const beats = (val, list, field) =>
+                    !list || list.length < 10 || val > list[list.length - 1][field];
 
-                const beatsBoard = (val, list, field) => {
-                    if (!list || list.length < 10) return true;
-                    return val > list[list.length - 1][field];
-                };
-
-                return beatsBoard(score, scoreRes.data, 'score')
-                    || beatsBoard(wpm, wpmRes.data, 'wpm')
-                    || (score > 500 && beatsBoard(accuracy, accRes.data, 'accuracy'));
+                return beats(score, scoreRes.data, 'score')
+                    || beats(wpm, wpmRes.data, 'wpm')
+                    || (score > 500 && beats(accuracy, accRes.data, 'accuracy'));
 
             } catch (e) {
                 console.warn('[Leaderboard] Supabase isTop10 failed, using local.', e);
             }
         }
 
-        // Fallback: local check
         const d = this._local[difficulty];
         if (!d) return false;
         const check = (val, list, field) => list.length < 10 || val > (list[list.length - 1]?.[field] ?? 0);
-        return check(score, d.score, 'score') || check(wpm, d.wpm, 'wpm') || (score > 500 && check(accuracy, d.accuracy, 'accuracy'));
+        return check(score, d.score, 'score')
+            || check(wpm, d.wpm, 'wpm')
+            || (score > 500 && check(accuracy, d.accuracy, 'accuracy'));
     }
 
     /**
-     * Saves a score entry to Supabase (all 3 categories) and local cache.
+     * Saves ONE row per score entry to Supabase. No category column — no duplicates.
      */
     async addScore(difficulty, name, score, wpm, accuracy) {
         const entry = {
@@ -136,20 +129,18 @@ export class Leaderboard {
             date: new Date().toLocaleDateString()
         };
 
-        // Always update local cache immediately (instant UI feedback)
+        // Always update local cache immediately
         this._pushToLocal(difficulty, entry);
 
         if (supabase) {
             try {
-                const rows = [
-                    { difficulty, category: 'score', name: entry.name, score, wpm, accuracy },
-                    { difficulty, category: 'wpm', name: entry.name, score, wpm, accuracy },
-                ];
-                if (score > 500) {
-                    rows.push({ difficulty, category: 'accuracy', name: entry.name, score, wpm, accuracy });
-                }
-
-                const { error } = await supabase.from('leaderboard').insert(rows);
+                const { error } = await supabase.from('leaderboard').insert([{
+                    difficulty,
+                    name: entry.name,
+                    score,
+                    wpm,
+                    accuracy
+                }]);
                 if (error) console.warn('[Leaderboard] Insert failed:', error.message);
             } catch (e) {
                 console.warn('[Leaderboard] Supabase addScore failed.', e);
