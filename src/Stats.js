@@ -3,6 +3,7 @@ export class Stats {
         this.score = 0;
         this.keystrokes = 0;
         this.correctKeystrokes = 0;
+        this.wordsTyped = 0;
         this.startTime = null;
 
         this.lives = 4; // 3 barriers + 1 final hit on wizard
@@ -28,6 +29,7 @@ export class Stats {
         this.score = 0;
         this.keystrokes = 0;
         this.correctKeystrokes = 0;
+        this.wordsTyped = 0;
         this.startTime = Date.now();
         this.lives = 4;
         this._keystrokeTimestamps = [];
@@ -46,6 +48,7 @@ export class Stats {
 
     addScore(wordLength) {
         this.score += wordLength * 10;
+        this.wordsTyped++;
     }
 
     loseLife() {

@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Game Over Stats
   const goScore = document.getElementById('go-score');
+  const goWords = document.getElementById('go-words');
   const goWpm = document.getElementById('go-wpm');
   const goAcc = document.getElementById('go-acc');
 
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hud.classList.add('hidden');
 
     goScore.innerText = finalStats.score;
+    goWords.innerText = finalStats.wordsTyped;
     goWpm.innerText = finalStats.getSessionWPM();
     goAcc.innerText = finalStats.getAccuracy() + '%';
 

@@ -1,55 +1,71 @@
 export const wordList = {
   easy: [
-    // Original
+    // Original + first expansion
     "hex", "orb", "rune", "mana", "aura", "void", "wand", "zap",
     "jinx", "fire", "ice", "dark", "dust", "soul", "flame", "cast",
     "gale", "bolt", "mage", "charm", "burn", "star", "moon", "sun",
     "ash", "fog", "mist", "wind", "sand", "clay", "iron", "gold",
-    // New
     "doom", "fang", "sear", "sage", "rift", "ward", "glow", "wisp",
     "bane", "flux", "rime", "pyre", "veil", "lore", "echo", "tomb",
-    "claw", "dark", "fate", "myth", "dusk", "dawn", "zeal", "oath",
-    "vale", "raze", "sway", "boon", "dread", "seep", "bind", "wraith"
+    "claw", "fate", "myth", "dusk", "dawn", "zeal", "oath",
+    "vale", "raze", "sway", "boon", "dread", "seep", "bind", "wraith",
+    // New batch 3
+    "rend", "slay", "fume", "smite", "quell", "blaze", "haze", "flow",
+    "tide", "gust", "husk", "core", "root", "thorn", "vex", "lash",
+    "omen", "brim", "pulse", "fade", "sift", "coil", "grim", "howl"
   ],
   medium: [
-    // Original
+    // Original + first expansion
     "phantom", "grimoire", "alchemy", "potion", "crystal", "scorch",
     "thunder", "illusive", "mirage", "cyclone", "blizzard", "summon",
     "spirit", "enchant", "warden", "mystic", "oracle", "inferno",
     "incant", "banish", "hexing", "shadow", "glimmer", "eclipse",
     "templar", "sorcery", "vampire", "warlock", "element", "scepter",
-    // New
     "specter", "arcanum", "vortex", "shrouded", "basilisk", "conduit",
     "revenant", "sanctum", "eldritch", "ominous", "unravel", "celestial",
-    "chimera", "fracture", "phantom", "gravity", "serpent", "torment",
-    "wyvern", "specter", "fissure", "undying", "cursed", "brimstone",
-    "abyssal", "maelstrom", "ancient", "twilight", "herald", "relic"
+    "chimera", "fracture", "gravity", "serpent", "torment",
+    "wyvern", "fissure", "undying", "cursed", "brimstone",
+    "abyssal", "ancient", "twilight", "herald", "relic",
+    // New batch 3
+    "spectral", "grimlock", "frostbite", "ashfall", "runebound",
+    "soulfire", "bloodmoon", "nightfall", "starfall", "voidborn",
+    "ironclad", "stoneheart", "windwalker", "flamecrest", "icebrand",
+    "deathknell", "hexbound", "stormbind", "oathbreaker", "spiritward"
   ],
   hard: [
-    // Original
+    // Original + first expansion
     "necromancy", "pyromancer", "chronomancy", "invocation", "obliterate",
     "resurrection", "transmute", "clairvoyance", "thaumaturge",
     "cataclysm", "maelstrom", "apprehend", "malevolent", "benevolent",
     "enchantment", "evocation", "divination", "conjuration", "illusionist",
     "apocalypse", "omnipotence", "incantation", "polymorph", "invincible",
-    // New
     "petrification", "annihilation", "translucent", "catastrophic",
     "reincarnate", "subjugate", "obliteration", "thunderstruck",
     "immolation", "spellbinder", "bewilderment", "incandescent",
     "impenetrable", "vaporization", "hallucination", "disintegrate",
-    "reverberate", "combustion", "phantomstrike", "thunderclap",
-    "spellweaver", "ossification", "amalgamate", "suffocation"
+    "reverberate", "combustion", "thunderclap",
+    "spellweaver", "ossification", "amalgamate", "suffocation",
+    // New batch 3
+    "stormcaller", "voidwalker", "soulshatter", "runebreaker",
+    "flameweaver", "ironbinding", "deathcaster", "coldsnapper",
+    "bloodweaving", "shadowbind", "starshatter", "moonbreaker",
+    "witchbinder", "darkenchant", "grimsummoner", "soulreaper",
+    "runeforging", "wraithbind", "frostweaving", "spellcleave"
   ],
   epic: [
-    // Original
+    // Original + first expansion
     "phantasmagoria", "prestidigitation", "unfathomable", "luminescence",
     "transmogrification", "indestructible", "quintessence", "doppelganger",
     "necronomicon", "omniscient", "apocalyptic", "extraterrestrial",
-    // New
     "transcendental", "insurmountable", "incomprehensible", "irrefutable",
     "otherworldly", "uncontrollable", "unimaginable", "counterintuitive",
     "overpowering", "multidimensional", "unquenchable", "invulnerability",
-    "spellcataclysm", "electrification", "shadowmanipulation", "selfimmolation"
+    "spellcataclysm", "electrification", "shadowmanipulation", "selfimmolation",
+    // New batch 3
+    "thaumaturgical", "catastrophization", "interdimensional",
+    "hyperventilation", "inconquerable", "all-encompassing",
+    "runic-annihilation", "void-transmutation", "soul-incineration",
+    "star-annihilation", "spirit-inversion", "cosmic-obliteration"
   ],
   paragraphs: [
     "in the ancient days before the sundering of the realms, mages did not cast spells so much as they spoke to the fundamental forces of the world. fire was a tempestuous companion that required coaxing, and water was a stubborn friend that only yielded to the most patient of voices. to be a sorcerer was to be a diplomat to the elements themselves.",
@@ -67,13 +83,9 @@ export const wordList = {
 export class WordDictionary {
   constructor() {
     this.words = wordList;
-
-    // Shuffle-queue: a separate shuffled deck per difficulty tier
-    // Once a deck is exhausted, it reshuffles automatically
     this._queues = {};
   }
 
-  // Fisher-Yates shuffle
   _shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -83,8 +95,6 @@ export class WordDictionary {
     return a;
   }
 
-  // Draw the next word from a shuffled queue for a given tier.
-  // Automatically refills and reshuffles when empty.
   _drawFromQueue(tier) {
     if (!this._queues[tier] || this._queues[tier].length === 0) {
       this._queues[tier] = this._shuffle(this.words[tier] || this.words.easy);
