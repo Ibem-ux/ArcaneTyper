@@ -142,31 +142,8 @@ export class Scribe {
             return;
         }
 
-        // MonkeyType behavior: Spacebar instantly jumps to the next word 
-        if (e.key === ' ') {
-            // If they hit space early, mark all remaining letters in this word as incorrect
-            while (this.currentLetterIdx < currentWordLength) {
-                const el = this.wordElements[this.currentWordIdx][this.currentLetterIdx];
-                el.classList.add('incorrect');
-
-                // Track typing accuracy penalty 
-                this.keystrokes++;
-
-                this.currentLetterIdx++;
-            }
-
-            // Advance to next word
-            this.currentWordIdx++;
-            this.currentLetterIdx = 0;
-
-            if (this.currentWordIdx >= this.words.length) {
-                this.finishTrial();
-                return;
-            }
-            this.updateCursor();
-            this.updateHUD();
-            return;
-        }
+        // Space is silently ignored — word advances automatically when all letters are typed
+        if (e.key === ' ') return;
 
         // Expected character
         let expectedChar = currentLetterEl.textContent;
