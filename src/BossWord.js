@@ -2,43 +2,66 @@ import { Word } from './Word.js';
 import { Sprite } from './Sprite.js';
 
 export class BossWord extends Word {
-    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY) {
+    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY, elementType = 'fire') {
         super(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY);
 
         // Core Boss Properties
         this.isBoss = true;
-
-        // Massive slowdown (e.g. 25% of normal speed)
-        this.speed = this.speed * 0.25;
-        this.vx = this.vx * 0.25;
-        this.vy = this.vy * 0.25;
-
-        // Scale it up
-        this.scale = 1.3 + Math.random() * 0.3;
+        this.elementType = elementType;
 
         // Visual setup for the multi-element mechanic
         this.segments = text.split('-');
         this.currentSegmentIndex = 0;
 
-        // Generate random elements for each segment ensuring they are different consecutively
+        // Element sequences are now locked to the Boss's main element
         this.elementSequence = [];
-        const elementNames = ['fire', 'ice', 'lightning', 'void'];
-        let lastElement = '';
         for (let i = 0; i < this.segments.length; i++) {
-            let ele;
-            do {
-                ele = elementNames[Math.floor(Math.random() * elementNames.length)];
-            } while (ele === lastElement);
-            this.elementSequence.push(ele);
-            lastElement = ele;
+            this.elementSequence.push(this.elementType);
         }
 
         this.applyCurrentElement();
+
+        // Speed modifications based on boss element
+        let speedMod = 0.25; // Default slow down
+        let scaleMod = 0;
+
+        switch (this.elementType) {
+            case 'ice':
+                speedMod = 0.15; // Extremely slow
+                scaleMod = 0.5; // Huge
+                break;
+            case 'thunder':
+                speedMod = 0.45; // Faster
+                break;
+            case 'fire':
+                speedMod = 0.30;
+                break;
+            case 'dark':
+                speedMod = 0.25;
+                break;
+        }
+
+        this.speed = this.speed * speedMod;
+        this.vx = this.vx * speedMod;
+        this.vy = this.vy * speedMod;
+
+        // Scale it up
+        this.scale = 1.3 + scaleMod + Math.random() * 0.3;
     }
 
     applyCurrentElement() {
         this.elementName = this.elementSequence[this.currentSegmentIndex];
         this.elementColors = Word.ELEMENTS[this.elementName];
+
+        // Map boss elements to sprite definitions
+        const sprintElementMap = {
+            'fire': 'fire',
+            'ice': 'ice',
+            'thunder': 'lightning',
+            'dark': 'void'
+        };
+
+        const mappedEle = sprintElementMap[this.elementName] || 'fire';
 
         const spriteMap = {
             'fire': '/fire.png',
@@ -47,9 +70,9 @@ export class BossWord extends Word {
             'void': '/void.png'
         };
 
-        const spriteSrc = spriteMap[this.elementName];
+        const spriteSrc = spriteMap[mappedEle];
         if (spriteSrc) {
-            this.sprite = new Sprite(spriteSrc, 0, 5, 2.5, this.elementName);
+            this.sprite = new Sprite(spriteSrc, 0, 5, 2.5, mappedEle);
         }
     }
 

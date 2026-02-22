@@ -83,14 +83,7 @@ export class Scribe {
                 letterElements.push(letterEl);
             }
 
-            // Optional: space rendered after the word (except the last word)
-            if (wIdx < this.words.length - 1) {
-                const spaceEl = document.createElement('span');
-                spaceEl.className = 'letter space';
-                spaceEl.innerHTML = '&nbsp;'; // visual space
-                wordEl.appendChild(spaceEl);
-                letterElements.push(spaceEl); // treat space as part of the "word" sequence
-            }
+            // (Spaces are no longer rendered as actual letter elements to match MonkeyType fluidity)
 
             this.container.appendChild(wordEl);
             this.wordElements.push(letterElements);
@@ -107,7 +100,14 @@ export class Scribe {
         if (this.currentWordIdx < this.wordElements.length) {
             const currentLetters = this.wordElements[this.currentWordIdx];
             if (this.currentLetterIdx < currentLetters.length) {
-                currentLetters[this.currentLetterIdx].classList.add('active');
+                const activeEl = currentLetters[this.currentLetterIdx];
+                activeEl.classList.add('active');
+
+                // Automatically smooth-scroll the text container so the user doesn't have to
+                // We do this precisely when they start a new word to avoid jitter
+                if (this.currentLetterIdx === 0 && this.isRunning) {
+                    activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
     }
@@ -142,11 +142,34 @@ export class Scribe {
             return;
         }
 
+        // MonkeyType behavior: Spacebar instantly jumps to the next word 
+        if (e.key === ' ') {
+            // If they hit space early, mark all remaining letters in this word as incorrect
+            while (this.currentLetterIdx < currentWordLength) {
+                const el = this.wordElements[this.currentWordIdx][this.currentLetterIdx];
+                el.classList.add('incorrect');
+
+                // Track typing accuracy penalty 
+                this.keystrokes++;
+
+                this.currentLetterIdx++;
+            }
+
+            // Advance to next word
+            this.currentWordIdx++;
+            this.currentLetterIdx = 0;
+
+            if (this.currentWordIdx >= this.words.length) {
+                this.finishTrial();
+                return;
+            }
+            this.updateCursor();
+            this.updateHUD();
+            return;
+        }
+
         // Expected character
         let expectedChar = currentLetterEl.textContent;
-        if (currentLetterEl.classList.contains('space')) {
-            expectedChar = ' ';
-        }
 
         this.keystrokes++;
 

@@ -75,6 +75,7 @@ export class Game {
         this.isBossPhase = false;
         this.boss = null;
         this.bossDimensionAlpha = 0; // For background fade effect
+        this.bossesDefeated = 0;
 
         // Define difficulty constraints
         const difficultySettings = {
@@ -94,7 +95,12 @@ export class Game {
     gameLoop(currentTime) {
         if (!this.isRunning) return;
 
-        const dt = currentTime - this.lastTime;
+        let dt = currentTime - this.lastTime;
+
+        // Clamp dt to a maximum of 50ms to prevent massive unplayable lag spikes 
+        // if the browser tab goes into the background or execution stalls.
+        dt = Math.min(dt, 50);
+
         this.lastTime = currentTime;
 
         this.update(dt);
@@ -344,8 +350,8 @@ export class Game {
         const targetX = this.canvas.width / 2;
         const targetY = this.canvas.height;
 
-        // Trigger boss phase every 20 standard spawns
-        if (this.spawnCount > 0 && this.spawnCount % 20 === 0 && !this.isBossPhase) {
+        // Trigger boss phase every 100 standard spawns
+        if (this.spawnCount > 0 && this.spawnCount % 100 === 0 && !this.isBossPhase) {
             this.startBossPhase();
             return;
         }
@@ -357,7 +363,14 @@ export class Game {
 
     startBossPhase() {
         this.isBossPhase = true;
-        this.boss = new Boss(this.canvas.width, this.canvas.height);
+
+        const elements = ['fire', 'ice', 'thunder', 'dark'];
+        const randomElement = elements[Math.floor(Math.random() * elements.length)];
+
+        // Every boss beaten increases stats by +25%
+        const difficultyScale = 1 + (this.bossesDefeated * 0.25);
+
+        this.boss = new Boss(this.canvas.width, this.canvas.height, randomElement, difficultyScale);
         this.audio.playExplosion(); // Dramatic entrance
 
         // Optionally clear current board words to focus purely on boss, 
@@ -382,6 +395,7 @@ export class Game {
         this.isBossPhase = false;
         this.boss = null;
         this.audio.playExplosion(); // Victory explosion
+        this.bossesDefeated++;
 
         // Small delay before normal spawning resumes
         this.spawnTimer = -2000;

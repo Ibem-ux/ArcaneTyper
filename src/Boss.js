@@ -1,16 +1,13 @@
 export class Boss {
-    constructor(canvasWidth, canvasHeight) {
+    constructor(canvasWidth, canvasHeight, elementType = 'fire', difficultyScale = 1) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
+        this.elementType = elementType;
 
         // Start off-screen top, then slide in
         this.x = canvasWidth / 2;
         this.y = -100;
         this.targetY = 100; // Hover position near the top
-
-        this.maxHealth = 4; // Takes 4 full words to defeat
-        this.health = this.maxHealth;
-        this.isDead = false;
 
         this.introFinished = false;
 
@@ -18,9 +15,29 @@ export class Boss {
         this.scale = 1.2;
         this.flashTimer = 0; // For damage feedback
 
+        // Base elemental stats
+        const elements = {
+            'fire': { hp: 4, speed: 2000, color: '#ff4500', aura: '#ff8c00' },
+            'ice': { hp: 6, speed: 4500, color: '#00ffff', aura: '#e0ffff' },
+            'thunder': { hp: 3, speed: 1500, color: '#ffd700', aura: '#ffffba' },
+            'dark': { hp: 5, speed: 3000, color: '#8a2be2', aura: '#4b0082' }
+        };
+
+        const config = elements[this.elementType] || elements['fire'];
+        this.color = config.color;
+        this.auraColor = config.aura;
+
+        // Scale HP and attack speed based on how many bosses have been defeated
+        this.maxHealth = Math.floor(config.hp * difficultyScale);
+        this.health = this.maxHealth;
+        this.isDead = false;
+
         // Attack logic
         this.attackTimer = 0;
-        this.attackInterval = 4000; // Fire a word every 4 seconds
+
+        // Attack speed scales faster as you beat more bosses (up to a 50% cap)
+        const speedMultiplier = Math.max(0.5, 1 - (difficultyScale * 0.1));
+        this.attackInterval = config.speed * speedMultiplier;
     }
 
     update(dt) {
@@ -68,12 +85,12 @@ export class Boss {
         ctx.scale(this.scale, this.scale);
 
         // Sinister aura
-        ctx.shadowColor = this.flashTimer > 0 ? '#ffffff' : '#ff4b4b';
+        ctx.shadowColor = this.flashTimer > 0 ? '#ffffff' : this.auraColor;
         ctx.shadowBlur = this.flashTimer > 0 ? 30 : 20 + Math.sin(performance.now() / 200) * 10;
 
-        // Draw Rival Wizard Silhouette (similar to player but red highlights & inverted)
-        ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : '#2a0808';
-        ctx.strokeStyle = '#ff4b4b';
+        // Draw Rival Wizard Silhouette
+        ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : '#1a1a24';
+        ctx.strokeStyle = this.color;
         ctx.lineWidth = 1;
 
         // Cloak
