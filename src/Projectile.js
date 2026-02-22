@@ -17,7 +17,7 @@ export class Projectile {
         this.vx = (dx / distance) * this.speed;
         this.vy = (dy / distance) * this.speed;
 
-        this.trail = []; // Keep a short history for trailing effects
+        this.trail = []; // Keep a longer history for trail effect
     }
 
     update(dt) {
@@ -25,16 +25,15 @@ export class Projectile {
 
         // Save history for trail
         this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 5) {
+        if (this.trail.length > 12) {
             this.trail.shift();
         }
 
         this.x += this.vx * (dt / 1000);
         this.y += this.vy * (dt / 1000);
 
-        // Check if we reached/passed the target (roughly)
-        // Since we are shooting UP at the boss, checking Y is easiest.
-        if (this.y <= this.targetY + 20) { // +20 gives some padding so it hits bottom of boss
+        // Check if we reached/passed the target
+        if (this.y <= this.targetY + 20) {
             this.isDead = true;
         }
     }
@@ -44,28 +43,40 @@ export class Projectile {
 
         ctx.save();
 
-        // Draw trail
-        if (this.trail.length > 0) {
-            ctx.beginPath();
-            ctx.moveTo(this.trail[0].x, this.trail[0].y);
+        // Draw tapered trail — older segments are thinner and more transparent
+        if (this.trail.length > 1) {
             for (let i = 1; i < this.trail.length; i++) {
+                const t = i / this.trail.length; // 0 = oldest, 1 = newest
+                const alpha = t * 0.6;
+                const width = t * this.radius * 1.5;
+
+                ctx.beginPath();
+                ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
                 ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                ctx.strokeStyle = this.colors[0];
+                ctx.lineWidth = Math.max(1, width);
+                ctx.lineCap = 'round';
+                ctx.globalAlpha = alpha;
+                ctx.shadowColor = this.colors[0];
+                ctx.shadowBlur = 10 * t;
+                ctx.stroke();
             }
-            ctx.lineTo(this.x, this.y);
-            ctx.strokeStyle = this.colors[0];
-            ctx.lineWidth = this.radius;
-            ctx.lineCap = 'round';
-            ctx.globalAlpha = 0.5;
-            ctx.stroke();
         }
 
-        // Draw core
+        // Draw glowing core
         ctx.globalAlpha = 1.0;
+        ctx.shadowColor = this.colors[0];
+        ctx.shadowBlur = 20;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.colors[1];
-        ctx.shadowColor = this.colors[0];
-        ctx.shadowBlur = 15;
+        ctx.fillStyle = this.colors[1] || '#ffffff';
+        ctx.fill();
+
+        // Bright inner core
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
 
         ctx.restore();

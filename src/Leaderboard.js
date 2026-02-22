@@ -1,10 +1,16 @@
+import { supabase } from './supabaseClient.js';
+
+const LOCAL_KEY = 'typermaster_hall_of_fame_v2';
+
 export class Leaderboard {
     constructor() {
-        this.storageKey = 'typermaster_hall_of_fame_v2'; // Bumped version to clear old incompatible structure
-        this.data = this.load();
+        // Local cache for instant UI renders — fallback when offline
+        this._local = this._loadLocal();
     }
 
-    resetDataTemplate() {
+    // ─── Local Storage Helpers ──────────────────────────────────────────────
+
+    _emptyTemplate() {
         return {
             easy: { score: [], wpm: [], accuracy: [] },
             normal: { score: [], wpm: [], accuracy: [] },
@@ -14,88 +20,140 @@ export class Leaderboard {
         };
     }
 
-    load() {
-        const stored = localStorage.getItem(this.storageKey);
-        if (stored) {
-            try {
+    _loadLocal() {
+        try {
+            const stored = localStorage.getItem(LOCAL_KEY);
+            if (stored) {
                 const parsed = JSON.parse(stored);
-                // Basic validation
-                if (parsed && typeof parsed === 'object' && parsed.easy) {
-                    if (!parsed.scribe) {
-                        parsed.scribe = { score: [], wpm: [], accuracy: [] };
-                    }
+                if (parsed && parsed.easy) {
+                    if (!parsed.scribe) parsed.scribe = { score: [], wpm: [], accuracy: [] };
                     return parsed;
                 }
+            }
+        } catch (e) { /* ignore */ }
+        return this._emptyTemplate();
+    }
+
+    _saveLocal() {
+        try {
+            localStorage.setItem(LOCAL_KEY, JSON.stringify(this._local));
+        } catch (e) { /* ignore */ }
+    }
+
+    _pushToLocal(difficulty, entry) {
+        const d = this._local[difficulty];
+        if (!d) return;
+
+        d.score.push({ ...entry });
+        d.wpm.push({ ...entry });
+        if (entry.score > 500) d.accuracy.push({ ...entry });
+
+        d.score.sort((a, b) => b.score - a.score || b.wpm - a.wpm);
+        d.wpm.sort((a, b) => b.wpm - a.wpm || b.score - a.score);
+        d.accuracy.sort((a, b) => b.accuracy - a.accuracy || b.wpm - a.wpm);
+
+        d.score = d.score.slice(0, 10);
+        d.wpm = d.wpm.slice(0, 10);
+        d.accuracy = d.accuracy.slice(0, 10);
+
+        this._saveLocal();
+    }
+
+    // ─── Public API (all async) ─────────────────────────────────────────────
+
+    /**
+     * Returns top 10 entries for a given difficulty + category.
+     * Tries Supabase first, falls back to localStorage.
+     */
+    async getTopScores(difficulty, category) {
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('leaderboard')
+                    .select('name, score, wpm, accuracy, created_at')
+                    .eq('difficulty', difficulty)
+                    .eq('category', category)
+                    .order(category, { ascending: false })
+                    .limit(10);
+
+                if (!error && data) return data;
             } catch (e) {
-                console.error("Failed to load leaderboard data.", e);
+                console.warn('[Leaderboard] Supabase fetch failed, using local cache.', e);
             }
         }
-        return this.resetDataTemplate();
+        // Fallback: local cache
+        return this._local[difficulty]?.[category] || [];
     }
 
-    save() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-    }
-
-    getTopScores(difficulty, category) {
-        if (!this.data[difficulty]) return [];
-        return this.data[difficulty][category] || [];
-    }
-
-    isTop10(difficulty, score, wpm, accuracy) {
-        // Must type at least something to qualify (prevent 0 score/0 wpm spam)
+    /**
+     * Checks if a score qualifies for the global top 10.
+     * Tries Supabase first, falls back to localStorage.
+     */
+    async isTop10(difficulty, score, wpm, accuracy) {
         if (score === 0) return false;
-        if (!this.data[difficulty]) return false;
 
-        const diffData = this.data[difficulty];
+        if (supabase) {
+            try {
+                // Check each category
+                const checks = await Promise.all([
+                    supabase.from('leaderboard').select('score').eq('difficulty', difficulty).eq('category', 'score').order('score', { ascending: false }).limit(10),
+                    supabase.from('leaderboard').select('wpm').eq('difficulty', difficulty).eq('category', 'wpm').order('wpm', { ascending: false }).limit(10),
+                    supabase.from('leaderboard').select('accuracy').eq('difficulty', difficulty).eq('category', 'accuracy').order('accuracy', { ascending: false }).limit(10),
+                ]);
 
-        const checkCategory = (val, cat, sortDesc) => {
-            const list = diffData[cat];
-            if (list.length < 10) return true; // Room for more
+                const [scoreRes, wpmRes, accRes] = checks;
 
-            const worstOnBoard = list[list.length - 1][cat];
-            return sortDesc ? val > worstOnBoard : val < worstOnBoard;
-        };
+                const beatsBoard = (val, list, field) => {
+                    if (!list || list.length < 10) return true;
+                    return val > list[list.length - 1][field];
+                };
 
-        const isTopScore = checkCategory(score, 'score', true);
-        const isTopWpm = checkCategory(wpm, 'wpm', true);
-        const isTopAcc = score > 500 && checkCategory(accuracy, 'accuracy', true);
+                return beatsBoard(score, scoreRes.data, 'score')
+                    || beatsBoard(wpm, wpmRes.data, 'wpm')
+                    || (score > 500 && beatsBoard(accuracy, accRes.data, 'accuracy'));
 
-        return isTopScore || isTopWpm || isTopAcc;
+            } catch (e) {
+                console.warn('[Leaderboard] Supabase isTop10 failed, using local.', e);
+            }
+        }
+
+        // Fallback: local check
+        const d = this._local[difficulty];
+        if (!d) return false;
+        const check = (val, list, field) => list.length < 10 || val > (list[list.length - 1]?.[field] ?? 0);
+        return check(score, d.score, 'score') || check(wpm, d.wpm, 'wpm') || (score > 500 && check(accuracy, d.accuracy, 'accuracy'));
     }
 
-    addScore(difficulty, name, score, wpm, accuracy) {
-        if (!this.data[difficulty]) return;
-
+    /**
+     * Saves a score entry to Supabase (all 3 categories) and local cache.
+     */
+    async addScore(difficulty, name, score, wpm, accuracy) {
         const entry = {
             name: name || 'Anonymous Mage',
-            score: score,
-            wpm: wpm,
-            accuracy: accuracy,
+            score,
+            wpm,
+            accuracy,
             date: new Date().toLocaleDateString()
         };
 
-        const diffData = this.data[difficulty];
+        // Always update local cache immediately (instant UI feedback)
+        this._pushToLocal(difficulty, entry);
 
-        // Add to all categories
-        diffData.score.push({ ...entry });
-        diffData.wpm.push({ ...entry });
+        if (supabase) {
+            try {
+                const rows = [
+                    { difficulty, category: 'score', name: entry.name, score, wpm, accuracy },
+                    { difficulty, category: 'wpm', name: entry.name, score, wpm, accuracy },
+                ];
+                if (score > 500) {
+                    rows.push({ difficulty, category: 'accuracy', name: entry.name, score, wpm, accuracy });
+                }
 
-        // Only add to accuracy if they actually played a bit (score > 500)
-        if (score > 500) {
-            diffData.accuracy.push({ ...entry });
+                const { error } = await supabase.from('leaderboard').insert(rows);
+                if (error) console.warn('[Leaderboard] Insert failed:', error.message);
+            } catch (e) {
+                console.warn('[Leaderboard] Supabase addScore failed.', e);
+            }
         }
-
-        // Sort descending
-        diffData.score.sort((a, b) => b.score - a.score || b.wpm - a.wpm);
-        diffData.wpm.sort((a, b) => b.wpm - a.wpm || b.score - a.score);
-        diffData.accuracy.sort((a, b) => b.accuracy - a.accuracy || b.wpm - a.wpm);
-
-        // Trim to top 10
-        diffData.score = diffData.score.slice(0, 10);
-        diffData.wpm = diffData.wpm.slice(0, 10);
-        diffData.accuracy = diffData.accuracy.slice(0, 10);
-
-        this.save();
     }
 }

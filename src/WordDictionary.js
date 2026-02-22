@@ -1,28 +1,55 @@
 export const wordList = {
   easy: [
+    // Original
     "hex", "orb", "rune", "mana", "aura", "void", "wand", "zap",
     "jinx", "fire", "ice", "dark", "dust", "soul", "flame", "cast",
     "gale", "bolt", "mage", "charm", "burn", "star", "moon", "sun",
-    "ash", "fog", "mist", "wind", "sand", "clay", "iron", "gold"
+    "ash", "fog", "mist", "wind", "sand", "clay", "iron", "gold",
+    // New
+    "doom", "fang", "sear", "sage", "rift", "ward", "glow", "wisp",
+    "bane", "flux", "rime", "pyre", "veil", "lore", "echo", "tomb",
+    "claw", "dark", "fate", "myth", "dusk", "dawn", "zeal", "oath",
+    "vale", "raze", "sway", "boon", "dread", "seep", "bind", "wraith"
   ],
   medium: [
+    // Original
     "phantom", "grimoire", "alchemy", "potion", "crystal", "scorch",
     "thunder", "illusive", "mirage", "cyclone", "blizzard", "summon",
     "spirit", "enchant", "warden", "mystic", "oracle", "inferno",
     "incant", "banish", "hexing", "shadow", "glimmer", "eclipse",
-    "templar", "sorcery", "vampire", "warlock", "element", "scepter"
+    "templar", "sorcery", "vampire", "warlock", "element", "scepter",
+    // New
+    "specter", "arcanum", "vortex", "shrouded", "basilisk", "conduit",
+    "revenant", "sanctum", "eldritch", "ominous", "unravel", "celestial",
+    "chimera", "fracture", "phantom", "gravity", "serpent", "torment",
+    "wyvern", "specter", "fissure", "undying", "cursed", "brimstone",
+    "abyssal", "maelstrom", "ancient", "twilight", "herald", "relic"
   ],
   hard: [
+    // Original
     "necromancy", "pyromancer", "chronomancy", "invocation", "obliterate",
     "resurrection", "transmute", "clairvoyance", "thaumaturge",
     "cataclysm", "maelstrom", "apprehend", "malevolent", "benevolent",
     "enchantment", "evocation", "divination", "conjuration", "illusionist",
-    "apocalypse", "omnipotence", "incantation", "polymorph", "invincible"
+    "apocalypse", "omnipotence", "incantation", "polymorph", "invincible",
+    // New
+    "petrification", "annihilation", "translucent", "catastrophic",
+    "reincarnate", "subjugate", "obliteration", "thunderstruck",
+    "immolation", "spellbinder", "bewilderment", "incandescent",
+    "impenetrable", "vaporization", "hallucination", "disintegrate",
+    "reverberate", "combustion", "phantomstrike", "thunderclap",
+    "spellweaver", "ossification", "amalgamate", "suffocation"
   ],
   epic: [
+    // Original
     "phantasmagoria", "prestidigitation", "unfathomable", "luminescence",
     "transmogrification", "indestructible", "quintessence", "doppelganger",
-    "necronomicon", "omniscient", "apocalyptic", "extraterrestrial"
+    "necronomicon", "omniscient", "apocalyptic", "extraterrestrial",
+    // New
+    "transcendental", "insurmountable", "incomprehensible", "irrefutable",
+    "otherworldly", "uncontrollable", "unimaginable", "counterintuitive",
+    "overpowering", "multidimensional", "unquenchable", "invulnerability",
+    "spellcataclysm", "electrification", "shadowmanipulation", "selfimmolation"
   ],
   paragraphs: [
     "in the ancient days before the sundering of the realms, mages did not cast spells so much as they spoke to the fundamental forces of the world. fire was a tempestuous companion that required coaxing, and water was a stubborn friend that only yielded to the most patient of voices. to be a sorcerer was to be a diplomat to the elements themselves.",
@@ -40,29 +67,46 @@ export const wordList = {
 export class WordDictionary {
   constructor() {
     this.words = wordList;
+
+    // Shuffle-queue: a separate shuffled deck per difficulty tier
+    // Once a deck is exhausted, it reshuffles automatically
+    this._queues = {};
+  }
+
+  // Fisher-Yates shuffle
+  _shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Draw the next word from a shuffled queue for a given tier.
+  // Automatically refills and reshuffles when empty.
+  _drawFromQueue(tier) {
+    if (!this._queues[tier] || this._queues[tier].length === 0) {
+      this._queues[tier] = this._shuffle(this.words[tier] || this.words.easy);
+    }
+    return this._queues[tier].pop();
   }
 
   getRandomWord(difficulty = 'easy') {
-    const list = this.words[difficulty] || this.words.easy;
-    return list[Math.floor(Math.random() * list.length)];
+    return this._drawFromQueue(difficulty);
   }
 
   getWordForDifficulty(difficulty) {
-    let listName = 'easy';
-    if (difficulty === 'normal') listName = 'medium';
-    if (difficulty === 'hard') listName = 'hard';
-    if (difficulty === 'hell') listName = 'epic';
-
-    const list = this.words[listName] || this.words.easy;
-    return list[Math.floor(Math.random() * list.length)];
+    let tier = 'easy';
+    if (difficulty === 'normal') tier = 'medium';
+    if (difficulty === 'hard') tier = 'hard';
+    if (difficulty === 'hell') tier = 'epic';
+    return this._drawFromQueue(tier);
   }
 
   getBossWord() {
-    // Combine two random epic/hard words with a hyphen for a long 20+ letter word
-    const list1 = this.words.epic;
-    const list2 = this.words.hard;
-    const word1 = list1[Math.floor(Math.random() * list1.length)];
-    const word2 = list2[Math.floor(Math.random() * list2.length)];
+    const word1 = this._drawFromQueue('epic');
+    const word2 = this._drawFromQueue('hard');
     return `${word1}-${word2}`;
   }
 

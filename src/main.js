@@ -6,7 +6,7 @@ import { Scribe } from './Scribe.js';
 document.addEventListener('DOMContentLoaded', () => {
   const game = new Game('game-canvas');
   const leaderboard = new Leaderboard();
-  const scribe = new Scribe(game.dictionary, game.stats); // Share dictionary
+  const scribe = new Scribe(game.dictionary, game.stats);
 
   // UI Elements
   const hud = document.getElementById('hud');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const goWpm = document.getElementById('go-wpm');
   const goAcc = document.getElementById('go-acc');
 
-  // Highscore Form
+  // Highscore Forms
   const newHighscoreForm = document.getElementById('new-highscore-form');
   const playerNameInput = document.getElementById('player-name-input');
   const submitScoreBtn = document.getElementById('submit-score-btn');
@@ -47,18 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const difficultySelect = document.getElementById('difficulty-select');
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
 
-  let pendingStats = null; // Store stats if they get a high score
+  let pendingStats = null;
   let pendingScribeStats = null;
 
-  // Initialize Menu with local stats (from previous simple logic)
   function updateMenuStats() {
     menuBestScore.innerText = game.stats.bestScore;
     menuBestWpm.innerText = game.stats.bestWPM;
   }
-
   updateMenuStats();
 
-  // Start Game Flow
+  // ── Game Flow ─────────────────────────────────────────────────────────────
+
   function startGame() {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
@@ -70,17 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
     practiceUi.classList.add('hidden');
 
     hud.classList.remove('hidden');
-
-    const selectedDifficulty = difficultySelect.value;
-    game.start(selectedDifficulty);
+    game.start(difficultySelect.value);
   }
 
-  // Practice Mode Flow
   function startPractice() {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
 
-    // Show practice UI
     practiceUi.classList.remove('hidden');
     practiceUi.classList.add('active');
 
@@ -88,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
     practiceRetryBtn.classList.remove('hidden');
     practiceReturnBtn.classList.remove('hidden');
 
-    // Make sure click focus is off buttons so Spacebar doesn't trigger clicks
     practiceBtn.blur();
     practiceRetryBtn.blur();
 
@@ -99,30 +93,36 @@ document.addEventListener('DOMContentLoaded', () => {
     scribe.stop();
     practiceUi.classList.remove('active');
     practiceUi.classList.add('hidden');
-
     startMenu.classList.remove('hidden');
     startMenu.classList.add('active');
   }
 
-  // Handle Game Over internally from Game.js
-  game.onGameOver = (finalStats) => {
+  // ── Game Over ─────────────────────────────────────────────────────────────
+
+  game.onGameOver = async (finalStats) => {
     hud.classList.add('hidden');
 
-    // Update game over screen stats
     goScore.innerText = finalStats.score;
-    goWpm.innerText = finalStats.getWPM();
+    goWpm.innerText = finalStats.getSessionWPM();
     goAcc.innerText = finalStats.getAccuracy() + '%';
 
     gameOverMenu.classList.remove('hidden');
     gameOverMenu.classList.add('active');
     updateMenuStats();
 
-    // Check High Score
-    if (leaderboard.isTop10(game.difficulty, finalStats.score, finalStats.getWPM(), finalStats.getAccuracy())) {
+    // Check against global top 10 (async)
+    const qualifies = await leaderboard.isTop10(
+      game.difficulty,
+      finalStats.score,
+      finalStats.getSessionWPM(),
+      finalStats.getAccuracy()
+    );
+
+    if (qualifies) {
       newHighscoreForm.classList.remove('hidden');
       restartBtn.classList.add('hidden');
       pendingStats = finalStats;
-      playerNameInput.value = "";
+      playerNameInput.value = '';
       playerNameInput.focus();
     } else {
       newHighscoreForm.classList.add('hidden');
@@ -130,32 +130,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Submit High Score
-  submitScoreBtn.addEventListener('click', () => {
-    if (!pendingStats) return;
-    const name = playerNameInput.value.trim() || 'Anonymous Mage';
-    leaderboard.addScore(game.difficulty, name, pendingStats.score, pendingStats.getWPM(), pendingStats.getAccuracy());
+  // ── Submit Arcane Defense Score ───────────────────────────────────────────
 
-    // Hide form, show restart button
+  submitScoreBtn.addEventListener('click', async () => {
+    if (!pendingStats) return;
+
+    submitScoreBtn.disabled = true;
+    submitScoreBtn.innerText = 'Sealing...';
+
+    const name = playerNameInput.value.trim() || 'Anonymous Mage';
+    await leaderboard.addScore(
+      game.difficulty, name,
+      pendingStats.score,
+      pendingStats.getSessionWPM(),
+      pendingStats.getAccuracy()
+    );
+
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.innerText = 'SEAL IN HISTORY';
+
     newHighscoreForm.classList.add('hidden');
     restartBtn.classList.remove('hidden');
     pendingStats = null;
 
-    // Automatically open leaderboard
     gameOverMenu.classList.remove('active');
     gameOverMenu.classList.add('hidden');
     openLeaderboard('score');
   });
 
-  // Scribe Form Highscore Logic
-  scribe.onTrialComplete = (wpm, accuracy) => {
+  // ── Scribe Trial ──────────────────────────────────────────────────────────
+
+  scribe.onTrialComplete = async (wpm, accuracy) => {
     const scribeScore = Math.floor(wpm * (accuracy / 100));
-    if (leaderboard.isTop10('scribe', scribeScore, wpm, accuracy)) {
+
+    const qualifies = await leaderboard.isTop10('scribe', scribeScore, wpm, accuracy);
+
+    if (qualifies) {
       scribeHighscoreForm.classList.remove('hidden');
       practiceRetryBtn.classList.add('hidden');
       practiceReturnBtn.classList.add('hidden');
       pendingScribeStats = { wpm, accuracy, score: scribeScore };
-      scribeNameInput.value = "";
+      scribeNameInput.value = '';
       scribeNameInput.focus();
     } else {
       scribeHighscoreForm.classList.add('hidden');
@@ -164,10 +179,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  scribeSubmitBtn.addEventListener('click', () => {
+  scribeSubmitBtn.addEventListener('click', async () => {
     if (!pendingScribeStats) return;
+
+    scribeSubmitBtn.disabled = true;
+    scribeSubmitBtn.innerText = 'Sealing...';
+
     const name = scribeNameInput.value.trim() || 'Anonymous Scribe';
-    leaderboard.addScore('scribe', name, pendingScribeStats.score, pendingScribeStats.wpm, pendingScribeStats.accuracy);
+    await leaderboard.addScore(
+      'scribe', name,
+      pendingScribeStats.score,
+      pendingScribeStats.wpm,
+      pendingScribeStats.accuracy
+    );
+
+    scribeSubmitBtn.disabled = false;
+    scribeSubmitBtn.innerText = 'SEAL IN HISTORY';
 
     scribeHighscoreForm.classList.add('hidden');
     practiceRetryBtn.classList.remove('hidden');
@@ -178,7 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
     openLeaderboard('wpm', 'scribe');
   });
 
-  // Leaderboard Logic
+  // ── Leaderboard ───────────────────────────────────────────────────────────
+
   function openLeaderboard(category = 'score', forceDifficulty = null) {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
@@ -194,22 +222,21 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLeaderboard(category);
   }
 
-  function renderLeaderboard(category) {
+  async function renderLeaderboard(category) {
     // Update active tab
     tabBtns.forEach(btn => {
-      if (btn.dataset.category === category) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
+      btn.classList.toggle('active', btn.dataset.category === category);
     });
 
     const tbody = document.getElementById('leaderboard-body');
-    tbody.innerHTML = '';
-    const difficulty = leaderboardDifficultyFilter.value;
-    const scores = leaderboard.getTopScores(difficulty, category);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 1rem;">Loading Hall of Fame...</td></tr>';
 
-    if (scores.length === 0) {
+    const difficulty = leaderboardDifficultyFilter.value;
+    const scores = await leaderboard.getTopScores(difficulty, category);
+
+    tbody.innerHTML = '';
+
+    if (!scores || scores.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">The Hall of Fame is empty. Create your legacy!</td></tr>';
       return;
     }
@@ -228,7 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Event Listeners
+  // ── Event Listeners ───────────────────────────────────────────────────────
+
   startBtn.addEventListener('click', startGame);
   restartBtn.addEventListener('click', startGame);
   practiceBtn.addEventListener('click', startPractice);
@@ -243,28 +271,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   tabBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      renderLeaderboard(e.target.dataset.category);
-    });
+    btn.addEventListener('click', (e) => renderLeaderboard(e.target.dataset.category));
   });
 
   leaderboardDifficultyFilter.addEventListener('change', () => {
     const activeTab = document.querySelector('.tab-btn.active');
-    if (activeTab) {
-      renderLeaderboard(activeTab.dataset.category);
-    }
+    if (activeTab) renderLeaderboard(activeTab.dataset.category);
   });
 
-  // Global keydown routing
   window.addEventListener('keydown', (e) => {
-    // Route typing events to practice mode if it is active
     if (scribe.isRunning) {
       scribe.handleKeyDown(e);
-      // Prevent scroll if space is hit
       if (e.key === ' ') e.preventDefault();
     }
-
-    // Escape to quit
     if (e.key === 'Escape' && scribe.isRunning) {
       quitPractice();
     }

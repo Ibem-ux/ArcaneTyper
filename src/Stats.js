@@ -7,6 +7,10 @@ export class Stats {
 
         this.lives = 4; // 3 barriers + 1 final hit on wizard
 
+        // Rolling WPM: store timestamp of each correct keystroke
+        this._keystrokeTimestamps = [];
+        this._rollingWindowMs = 10000; // 10-second window
+
         this.bestScore = parseInt(localStorage.getItem('typerMaster_score') || '0', 10);
         this.bestWPM = parseInt(localStorage.getItem('typerMaster_wpm') || '0', 10);
 
@@ -26,13 +30,18 @@ export class Stats {
         this.correctKeystrokes = 0;
         this.startTime = Date.now();
         this.lives = 4;
+        this._keystrokeTimestamps = [];
         this.updateHUD();
         this.updateLivesDisplay();
     }
 
     recordStroke(isCorrect) {
         this.keystrokes++;
-        if (isCorrect) this.correctKeystrokes++;
+        if (isCorrect) {
+            this.correctKeystrokes++;
+            // Record timestamp for rolling window calculation
+            this._keystrokeTimestamps.push(Date.now());
+        }
     }
 
     addScore(wordLength) {
@@ -46,9 +55,29 @@ export class Stats {
     }
 
     getWPM() {
-        if (!this.startTime || this.keystrokes === 0) return 0;
+        const now = Date.now();
+        const cutoff = now - this._rollingWindowMs;
+
+        // Drop keystrokes older than the window
+        this._keystrokeTimestamps = this._keystrokeTimestamps.filter(t => t >= cutoff);
+
+        const countInWindow = this._keystrokeTimestamps.length;
+        if (countInWindow === 0) return 0;
+
+        // Determine the actual window span (from oldest timestamp to now)
+        // This avoids inflating WPM at the very start of the game
+        const oldest = this._keystrokeTimestamps[0];
+        const windowSpanMs = Math.max(1000, now - oldest); // minimum 1s to avoid NaN/Infinity
+        const windowSpanMin = windowSpanMs / 60000;
+
+        // Standard WPM: keystrokes / 5 / minutes
+        return Math.round((countInWindow / 5) / windowSpanMin);
+    }
+
+    // Full-session WPM — used for leaderboard saving
+    getSessionWPM() {
+        if (!this.startTime || this.correctKeystrokes === 0) return 0;
         const minutesElapsed = (Date.now() - this.startTime) / 60000;
-        // Standard WPM calculation: (Gross Keystrokes / 5) / minutes
         return Math.round((this.correctKeystrokes / 5) / minutesElapsed);
     }
 
@@ -68,16 +97,7 @@ export class Stats {
         if (!this.livesContainer) return;
         const hearts = this.livesContainer.querySelectorAll('.barrier');
 
-        // Ensure there are hearts to update, index matches the barrier.
-        // lives = 4 -> all 3 barriers active
-        // lives = 3 -> barriers 0, 1 active. barrier 2 lost.
-        // lives = 2 -> barrier 0 active. barriers 1, 2 lost.
-        // lives = 1 -> barriers 0, 1, 2 lost. (Wizard exposed)
-
         hearts.forEach((heart, index) => {
-            // Because there are 3 barriers and lives go from 4 down to 1.
-            // If lives is 4, all barriers (index 0,1,2) are active.
-            // If lives is 3, barrier 2 is lost.
             if (index >= this.lives - 1) {
                 heart.classList.add('lost');
             } else {
@@ -87,7 +107,8 @@ export class Stats {
     }
 
     saveHighScore() {
-        const finalWPM = this.getWPM();
+        // Use full-session WPM for leaderboard (more stable/fair)
+        const finalWPM = this.getSessionWPM();
         if (this.score > this.bestScore) {
             this.bestScore = this.score;
             localStorage.setItem('typerMaster_score', this.bestScore);

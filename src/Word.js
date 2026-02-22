@@ -41,35 +41,30 @@ export class Word {
 
         // Position
         if (this.isBossAttack) {
-            // Boss attacks spawn from the center top (where the boss is)
             this.x = canvasWidth / 2;
             this.y = 100; // Boss's targetY
         } else {
-            // Normal attacks start off-screen top, random X
             this.y = -50;
             const margin = 100;
             this.x = margin + Math.random() * (canvasWidth - 2 * margin);
         }
 
-        // Optional aesthetic props
+        // Scale
         if (this.isBossAttack) {
-            this.scale = 0.25 + Math.random() * 0.1; // Make the sprite/hitbox smaller for Boss bullets
+            this.scale = 0.25 + Math.random() * 0.1;
         } else {
             this.scale = 0.45 + Math.random() * 0.25;
         }
 
-        // Speed varies slightly by word length and random factor
+        // Speed
         const baseSpeed = 0.8 + Math.random() * 0.6;
         let finalSpeed = (baseSpeed * speedMultiplier) * (1 - (text.length * 0.02));
-
-        // Boss attacks are significantly slower to make them fair despite being hard words
         if (this.isBossAttack) {
             finalSpeed *= 0.35;
         }
-
         this.speed = finalSpeed;
 
-        // Calculate velocity vector towards target
+        // Velocity vector towards target
         this.targetX = targetX;
         this.targetY = targetY;
 
@@ -77,24 +72,45 @@ export class Word {
         const dy = this.targetY - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Normalize and multiply by speed (multiplied by 0.05 to match original downward speed scaling)
         this.vx = (dx / distance) * this.speed * 0.05;
         this.vy = (dy / distance) * this.speed * 0.05;
 
-        // Calculate angle pointing towards the wizard (straight down is 0 rotation visually, so we adjust atan2)
-        // Math.atan2(dy, dx) gives the absolute angle. Since the sprites are drawn naturally pointing "up" or neutral,
-        // we might just need the direct angle + an offset depending on the sprite sheet's default orientation.
-        // Assuming sprite default points DOWN (-Y in canvas space), the default dx,dy is (0, 1), which is PI/2.
-        // So angle = atan2(dy, dx) - PI/2 gives the rotation needed.
         this.angle = Math.atan2(dy, dx) - Math.PI / 2;
 
         this.isTargeted = false;
         this.isDead = false;
-        this.opacity = 1;
 
+        // --- Fade-in animation ---
+        this.opacity = 0;
+        this.spawnTimer = 0;
+        this.spawnDuration = 300; // ms
+
+        // --- Death animation ---
+        this.dying = false;
+        this.deathTimer = 0;
+        this.deathDuration = 200; // ms
+        this.deathScale = 1.0; // scale multiplier during death
     }
 
     update(dt) {
+        // Fade-in
+        if (this.spawnTimer < this.spawnDuration) {
+            this.spawnTimer += dt;
+            this.opacity = Math.min(1, this.spawnTimer / this.spawnDuration);
+        }
+
+        // Death animation
+        if (this.dying) {
+            this.deathTimer += dt;
+            const progress = Math.min(1, this.deathTimer / this.deathDuration);
+            this.opacity = 1.0 - progress;
+            this.deathScale = 1.0 + progress * 0.4; // scale up slightly
+            if (this.deathTimer >= this.deathDuration) {
+                this.isDead = true;
+            }
+            return; // Don't move while dying
+        }
+
         // Move diagonally towards target
         this.x += this.vx * dt;
         this.y += this.vy * dt;
@@ -110,11 +126,11 @@ export class Word {
 
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.scale(this.scale, this.scale);
+        ctx.scale(this.scale * this.deathScale, this.scale * this.deathScale);
+        ctx.globalAlpha = this.opacity;
 
         if (this.isTargeted) {
-            // Glow effect for targeted word
-            ctx.shadowColor = 'rgba(255, 215, 0, 0.8)'; // gold glow
+            ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
             ctx.shadowBlur = 15;
         }
 
@@ -122,44 +138,35 @@ export class Word {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
-        // Cache the measured text width to save expensive Canvas computations
+        // Cache measured text width
         if (this._lastTypedStr !== this.typed) {
             this._cachedTypedWidth = ctx.measureText(this.typed).width;
             this._lastTypedStr = this.typed;
         }
 
-        const textYOffset = 70; // Move text further below the elemental sprite
-        const textXOffset = -35; // Manually shift text slightly left to align with the sprite's visual center
-
+        const textYOffset = 70;
+        const textXOffset = -35;
         const startX = (-this.totalTextWidth / 2) + textXOffset;
 
         // Draw Animated Sprite above the text
         if (this.sprite) {
-            // Draw perfectly centered at 0, passing the angle
             this.sprite.draw(ctx, 0, -15, this.spriteTargetWidth, this.elementName, this.angle);
         }
 
-        // To make the text bigger while the sprite/hitbox is smaller:
-        // Reverse some of the scaling just for the text rendering
         ctx.save();
         if (this.isBossAttack) {
-            // Boss attack sprites are scaled down heavily (e.g. 0.25)
-            // If we want the text larger, we scale it back up relative to the sprite
             ctx.scale(1.5, 1.5);
         }
 
-        // Draw text background to ensure it's always readable over projectiles
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Semi-transparent black box
+        // Text background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         const paddingX = 10;
         const totalTextWidth = this._cachedTypedWidth + ctx.measureText(this.untyped).width;
         const boxWidth = totalTextWidth + paddingX * 2;
         const boxHeight = 40;
-
-        // Center the box precisely under the text
         const boxX = startX - paddingX;
         const boxY = textYOffset - boxHeight / 2;
 
-        // Draw rounded rect behind text
         ctx.beginPath();
         if (ctx.roundRect) {
             ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 5);
@@ -168,25 +175,25 @@ export class Word {
         }
         ctx.fill();
 
-        // Draw typed part (dimmed white)
+        // Typed part
         ctx.fillStyle = this.isTargeted ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)';
         ctx.fillText(this.typed, startX, textYOffset);
 
-        // Draw untyped part (bright white / gold if targeted)
+        // Untyped part
         ctx.fillStyle = this.isTargeted ? '#ffd700' : '#ffffff';
         ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
 
-        ctx.restore(); // Restore from text-specific scale
-        ctx.restore(); // Restore from world scale
+        ctx.restore();
+        ctx.restore();
     }
 
     typeLetter(letter) {
         if (this.untyped[0] === letter) {
             this.typed += letter;
             this.untyped = this.untyped.slice(1);
-            return true; // Correct letter
+            return true;
         }
-        return false; // Wrong letter
+        return false;
     }
 
     isCompleted() {
@@ -196,29 +203,29 @@ export class Word {
 
 Word.ELEMENTS = {
     fire: {
-        untyped: '#ff7b54',        // Soft orange
-        untypedTargeted: '#ff4b4b',// Hot red
+        untyped: '#ff7b54',
+        untypedTargeted: '#ff4b4b',
         typed: '#4a3b5a',
         typedTargeted: '#b892b0',
         particles: ['#ff4b4b', '#ff7b54', '#ffd700', '#4a0000']
     },
     ice: {
-        untyped: '#b3e5fc',        // Soft cyan
-        untypedTargeted: '#29b6f6',// Bright cyan/blue
+        untyped: '#b3e5fc',
+        untypedTargeted: '#29b6f6',
         typed: '#4a3b5a',
         typedTargeted: '#b892b0',
         particles: ['#b3e5fc', '#29b6f6', '#ffffff', '#0277bd']
     },
     lightning: {
-        untyped: '#e1bee7',        // Soft pink/purple
-        untypedTargeted: '#d500f9',// Shocking violet
+        untyped: '#e1bee7',
+        untypedTargeted: '#d500f9',
         typed: '#4a3b5a',
         typedTargeted: '#b892b0',
         particles: ['#d500f9', '#ea80fc', '#ffffff', '#4a148c']
     },
     void: {
-        untyped: '#80cbc4',        // Deep teal
-        untypedTargeted: '#00bfa5',// Bright poison green
+        untyped: '#80cbc4',
+        untypedTargeted: '#00bfa5',
         typed: '#4a3b5a',
         typedTargeted: '#b892b0',
         particles: ['#00bfa5', '#1de9b6', '#004d40', '#000000']
