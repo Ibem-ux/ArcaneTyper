@@ -1,7 +1,10 @@
 import { Word } from './Word.js';
+import { Boss } from './Boss.js';
+import { Projectile } from './Projectile.js';
 import { WordDictionary } from './WordDictionary.js';
 import { Stats } from './Stats.js';
 import { Particle } from './Particle.js';
+import { AudioController } from './AudioController.js';
 
 export class Game {
     constructor(canvasId) {
@@ -10,6 +13,7 @@ export class Game {
 
         this.dictionary = new WordDictionary();
         this.stats = new Stats();
+        this.audio = new AudioController();
 
         this.words = [];
         this.particles = [];
@@ -38,9 +42,11 @@ export class Game {
         this.canvas.height = parent.clientHeight;
     }
 
-    start() {
+    start(difficulty = 'normal') {
+        this.difficulty = difficulty;
         this.reset();
         this.isRunning = true;
+        this.audio.startBackgroundMusic();
         window.addEventListener('keydown', this.handleKeyDown);
         this.lastTime = performance.now();
         this.animationFrameId = requestAnimationFrame((t) => this.gameLoop(t));
@@ -48,6 +54,7 @@ export class Game {
 
     stop() {
         this.isRunning = false;
+        this.audio.stopBackgroundMusic();
         window.removeEventListener('keydown', this.handleKeyDown);
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
@@ -57,9 +64,28 @@ export class Game {
     reset() {
         this.words = [];
         this.particles = [];
+        this.projectiles = [];
         this.targetedWord = null;
         this.spawnTimer = 0;
-        this.spawnInterval = 3000;
+        this.spawnCount = 0; // Track spawns for boss mechanic
+
+        // Boss phase state
+        this.isBossPhase = false;
+        this.boss = null;
+        this.bossDimensionAlpha = 0; // For background fade effect
+
+        // Define difficulty constraints
+        const difficultySettings = {
+            'easy': { speed: 0.8, spawnInt: 2500 },
+            'normal': { speed: 1.2, spawnInt: 1800 },
+            'hard': { speed: 1.6, spawnInt: 1200 },
+            'hell': { speed: 2.2, spawnInt: 800 }
+        };
+        const settings = difficultySettings[this.difficulty] || difficultySettings['normal'];
+
+        this.currentSpeedMultiplier = settings.speed;
+        this.spawnInterval = settings.spawnInt;
+
         this.stats.reset();
     }
 
@@ -85,12 +111,32 @@ export class Game {
     update(dt) {
         this.spawnTimer += dt;
 
-        // Difficulty scaling: spawn aster the more score we have
-        let currentSpawnInterval = Math.max(600, this.spawnInterval - (this.stats.score * 0.8));
-
-        if (this.spawnTimer >= currentSpawnInterval) {
+        // Difficulty scaling is now constant per difficulty level.
+        if (!this.isBossPhase && this.spawnTimer >= this.spawnInterval) {
             this.spawnWord();
             this.spawnTimer = 0;
+        }
+
+        // Pocket Dimension Transition
+        if (this.isBossPhase && this.bossDimensionAlpha < 1) {
+            this.bossDimensionAlpha = Math.min(1, this.bossDimensionAlpha + dt * 0.001); // 1-second fade
+        } else if (!this.isBossPhase && this.bossDimensionAlpha > 0) {
+            this.bossDimensionAlpha = Math.max(0, this.bossDimensionAlpha - dt * 0.001);
+        }
+
+        // Boss Logic
+        if (this.isBossPhase && this.boss) {
+            this.boss.update(dt);
+
+            // Boss attacks
+            if (this.boss.shouldAttack() && !this.boss.isDead) {
+                this.spawnBossAttack();
+            }
+
+            // If boss is defeated, return to normal phase
+            if (this.boss.isDead && this.words.length === 0 && this.projectiles.length === 0) {
+                this.endBossPhase();
+            }
         }
 
         const wizX = this.canvas.width / 2;
@@ -124,6 +170,9 @@ export class Game {
                 this.words.splice(i, 1);
                 if (word === this.targetedWord) this.targetedWord = null;
 
+                // Play glassy shatter sound
+                this.audio.playShatter();
+
                 // Spawn barrier breaking / hit effect
                 this.spawnExplosion(word.x, word.y, { particles: [hitColor, '#ffffff'] });
 
@@ -142,11 +191,43 @@ export class Game {
                 this.particles.splice(i, 1);
             }
         }
+
+        // Update projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+            proj.update(dt);
+
+            // Check collision with boss
+            if (proj.isDead) {
+                this.projectiles.splice(i, 1);
+
+                if (this.isBossPhase && this.boss && !this.boss.isDead) {
+                    this.boss.takeDamage();
+                    this.audio.playExplosion();
+                    this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#ffd700', '#ffffff', '#ff4b4b'] });
+                }
+            }
+        }
     }
 
     draw() {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw Pocket Dimension Background if active
+        if (this.bossDimensionAlpha > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = this.bossDimensionAlpha;
+            const gradient = this.ctx.createRadialGradient(
+                this.canvas.width / 2, this.canvas.height / 2, 50,
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width / 1.5
+            );
+            gradient.addColorStop(0, '#2a0808'); // Blood red center
+            gradient.addColorStop(1, '#05020a'); // Void edges
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
+        }
 
         // Draw Wizard and Barriers
         this.ctx.save();
@@ -202,6 +283,14 @@ export class Game {
 
         this.ctx.restore();
 
+        // Draw Boss
+        if (this.isBossPhase && this.boss) {
+            this.boss.draw(this.ctx);
+        }
+
+        // Draw projectiles
+        this.projectiles.forEach(p => p.draw(this.ctx));
+
         // Draw all words
         // Draw untargeted first so targeted is always on top
         this.words.forEach(word => !word.isTargeted && word.draw(this.ctx));
@@ -214,16 +303,53 @@ export class Game {
     }
 
     spawnWord() {
-        const text = this.dictionary.getWordByDifficultyScore(this.stats.score);
-        // Speed multiplier increases gently every 200 points
-        const speedMultiplier = 1 + Math.floor(this.stats.score / 200) * 0.05;
+        this.spawnCount++;
 
         // Wizard's center position
         const targetX = this.canvas.width / 2;
-        const targetY = this.canvas.height; // Exactly at the bottom border
+        const targetY = this.canvas.height;
 
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, speedMultiplier, targetX, targetY);
+        // Trigger boss phase every 20 standard spawns
+        if (this.spawnCount > 0 && this.spawnCount % 20 === 0 && !this.isBossPhase) {
+            this.startBossPhase();
+            return;
+        }
+
+        const text = this.dictionary.getWordForDifficulty(this.difficulty);
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY);
         this.words.push(newWord);
+    }
+
+    startBossPhase() {
+        this.isBossPhase = true;
+        this.boss = new Boss(this.canvas.width, this.canvas.height);
+        this.audio.playExplosion(); // Dramatic entrance
+
+        // Optionally clear current board words to focus purely on boss, 
+        // but leaving them creates a cool transition chaos.
+    }
+
+    spawnBossAttack() {
+        // Boss always fires hard or epic words
+        const isEpic = Math.random() > 0.5;
+        const text = this.dictionary.getRandomWord(isEpic ? 'epic' : 'hard');
+
+        const targetX = this.canvas.width / 2;
+        const targetY = this.canvas.height;
+
+        // isBossAttack = true makes it spawn exactly on the boss and move slowly
+        const magicBullet = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, true);
+        this.words.push(magicBullet);
+    }
+
+    endBossPhase() {
+        this.stats.addScore(1000); // Massive point bonus
+        this.isBossPhase = false;
+        this.boss = null;
+        this.audio.playExplosion(); // Victory explosion
+
+        // Small delay before normal spawning resumes
+        this.spawnTimer = -2000;
     }
 
     handleKeyDown(e) {
@@ -255,25 +381,40 @@ export class Game {
 
     processKeystroke(word, letter) {
         if (word.untyped[0] === letter) {
-            // Correct!
+            // Correct standard letter!
             word.typed += letter;
             word.untyped = word.untyped.slice(1);
             this.stats.recordStroke(true);
+            this.audio.playMagicSpark();
 
             // Spawn a small spark for typing feedback
             this.ctx.font = 'bold 32px Cinzel'; // Ensure font match for measurement
             const fullWidth = this.ctx.measureText(word.text).width;
             const typedWidth = this.ctx.measureText(word.typed).width;
-            const textXOffset = -35; // Aligns with Word.js offset
-            this.spawnHitSpark(word.x - fullWidth / 2 + textXOffset + typedWidth, word.y + 70, word.elementColors);
+            const textXOffset = -35;
+
+            // Adjust hit spark location based on word.scale
+            const sparkX = word.x + (-fullWidth / 2 + textXOffset + typedWidth) * word.scale;
+            const sparkY = word.y + 70 * word.scale;
+
+            this.spawnHitSpark(sparkX, sparkY, word.elementColors);
 
             if (word.untyped.length === 0) {
                 // Word is fully typed!
                 this.stats.addScore(word.text.length);
                 word.isDead = true;
+                this.audio.playExplosion();
 
                 // Spawn particle burst at word's location
-                this.spawnExplosion(word.x, word.y + 15, word.elementColors);
+                this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors);
+
+                // If this was a boss attack (bullet), fire a projectile back at the boss
+                if (this.isBossPhase && this.boss && !this.boss.isDead && word.isBossAttack) {
+                    const startX = this.canvas.width / 2;
+                    const startY = this.canvas.height; // Fired by player
+                    const projectile = new Projectile(startX, startY, this.boss.x, this.boss.y, word.elementColors.particles);
+                    this.projectiles.push(projectile);
+                }
 
                 this.words = this.words.filter(w => w !== word);
                 this.targetedWord = null;

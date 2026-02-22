@@ -39,12 +39,24 @@
       <!-- Start Menu -->
       <div id="start-menu" class="overlay-menu active">
         <h1>ARCANE<span class="highlight">TYPER</span></h1>
-        <p class="subtitle">Enchanted Library Edition</p>
+        <p class="subtitle">Enchanted Library Edition - v1.3.0</p>
         <div class="stats-overview">
           <p>Mastery Score: <span id="menu-best-score">0</span></p>
           <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
         </div>
-        <button id="start-btn" class="primary-btn">OPEN THE GRIMOIRE</button>
+        <div class="difficulty-selector">
+          <label for="difficulty-select">Select Challenge:</label>
+          <select id="difficulty-select">
+            <option value="easy">Novice (Easy)</option>
+            <option value="normal" selected>Adept (Normal)</option>
+            <option value="hard">Archmage (Hard)</option>
+            <option value="hell">Cataclysm (Hell)</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button id="start-btn" class="primary-btn">OPEN THE GRIMOIRE</button>
+          <button id="open-leaderboard-btn" class="primary-btn">HALL OF FAME</button>
+        </div>
       </div>
 
       <!-- Game Over Menu -->
@@ -55,7 +67,53 @@
           <div class="stat-row"><span>Speed (WPM):</span> <span id="go-wpm">0</span></div>
           <div class="stat-row"><span>Accuracy:</span> <span id="go-acc">0%</span></div>
         </div>
+
+        <div id="new-highscore-form" class="hidden"
+          style="margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <h3 style="color: var(--accent-primary); letter-spacing: 2px;">NEW LEGEND!</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Enter your name for the Hall of Fame.</p>
+          <input type="text" id="player-name-input" maxlength="15" placeholder="Anonymous Mage" />
+          <button id="submit-score-btn" class="primary-btn" style="font-size: 1rem; padding: 10px 20px;">SEAL IN
+            HISTORY</button>
+        </div>
+
         <button id="restart-btn" class="primary-btn">CAST AGAIN</button>
+      </div>
+
+      <!-- Hall of Fame Menu -->
+      <div id="leaderboard-menu" class="overlay-menu hidden">
+        <h2>HALL OF FAME</h2>
+        <div class="difficulty-selector" style="margin-bottom: 1rem; flex-direction: row; gap: 15px;">
+          <label for="leaderboard-difficulty-filter" style="font-size: 0.9rem;">Realm:</label>
+          <select id="leaderboard-difficulty-filter" style="min-width: 150px; font-size: 0.9rem; padding: 5px 10px;">
+            <option value="easy">Novice</option>
+            <option value="normal" selected>Adept</option>
+            <option value="hard">Archmage</option>
+            <option value="hell">Cataclysm</option>
+          </select>
+        </div>
+        <div class="leaderboard-tabs">
+          <button class="tab-btn active" data-category="score">The High Council</button>
+          <button class="tab-btn" data-category="wpm">The Swift Casters</button>
+          <button class="tab-btn" data-category="accuracy">The Flawless Oracles</button>
+        </div>
+        <div class="leaderboard-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Mage Name</th>
+                <th>Score</th>
+                <th>WPM</th>
+                <th>Acc</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <!-- JS Populated -->
+            </tbody>
+          </table>
+        </div>
+        <button id="close-leaderboard-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
       </div>
 
       <!-- The Game Canvas -->

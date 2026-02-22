@@ -1,10 +1,11 @@
 import { Sprite } from './Sprite.js';
 
 export class Word {
-    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY) {
+    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY, isBossAttack = false) {
         this.text = text;
         this.typed = "";
         this.untyped = text;
+        this.isBossAttack = isBossAttack;
 
         // Caching text measurements
         this._lastTypedStr = null;
@@ -39,15 +40,34 @@ export class Word {
         }
 
         // Position
-        this.y = -50; // Start off-screen top
+        if (this.isBossAttack) {
+            // Boss attacks spawn from the center top (where the boss is)
+            this.x = canvasWidth / 2;
+            this.y = 100; // Boss's targetY
+        } else {
+            // Normal attacks start off-screen top, random X
+            this.y = -50;
+            const margin = 100;
+            this.x = margin + Math.random() * (canvasWidth - 2 * margin);
+        }
 
-        // Random X position, but try to spread them out
-        const margin = 100;
-        this.x = margin + Math.random() * (canvasWidth - 2 * margin);
+        // Optional aesthetic props
+        if (this.isBossAttack) {
+            this.scale = 0.25 + Math.random() * 0.1; // Make the sprite/hitbox smaller for Boss bullets
+        } else {
+            this.scale = 0.45 + Math.random() * 0.25;
+        }
 
         // Speed varies slightly by word length and random factor
         const baseSpeed = 0.8 + Math.random() * 0.6;
-        this.speed = (baseSpeed * speedMultiplier) * (1 - (text.length * 0.02)); // longer words are slightly slower
+        let finalSpeed = (baseSpeed * speedMultiplier) * (1 - (text.length * 0.02));
+
+        // Boss attacks are significantly slower to make them fair despite being hard words
+        if (this.isBossAttack) {
+            finalSpeed *= 0.35;
+        }
+
+        this.speed = finalSpeed;
 
         // Calculate velocity vector towards target
         this.targetX = targetX;
@@ -72,8 +92,6 @@ export class Word {
         this.isDead = false;
         this.opacity = 1;
 
-        // Optional aesthetic props
-        this.scale = 0.8 + Math.random() * 0.4;
     }
 
     update(dt) {
@@ -121,6 +139,15 @@ export class Word {
             this.sprite.draw(ctx, 0, -15, this.spriteTargetWidth, this.elementName, this.angle);
         }
 
+        // To make the text bigger while the sprite/hitbox is smaller:
+        // Reverse some of the scaling just for the text rendering
+        ctx.save();
+        if (this.isBossAttack) {
+            // Boss attack sprites are scaled down heavily (e.g. 0.25)
+            // If we want the text larger, we scale it back up relative to the sprite
+            ctx.scale(1.5, 1.5);
+        }
+
         // Draw typed part (dimmed white)
         ctx.fillStyle = this.isTargeted ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)';
         ctx.fillText(this.typed, startX, textYOffset);
@@ -129,7 +156,8 @@ export class Word {
         ctx.fillStyle = this.isTargeted ? '#ffd700' : '#ffffff';
         ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
 
-        ctx.restore();
+        ctx.restore(); // Restore from text-specific scale
+        ctx.restore(); // Restore from world scale
     }
 
     typeLetter(letter) {

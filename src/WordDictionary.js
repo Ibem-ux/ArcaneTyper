@@ -36,11 +36,22 @@ export class WordDictionary {
     return list[Math.floor(Math.random() * list.length)];
   }
 
-  getWordByDifficultyScore(score) {
-    if (score < 500) return this.getRandomWord('easy');
-    if (score < 1500) return this.getRandomWord(Math.random() > 0.4 ? 'medium' : 'easy');
-    if (score < 3000) return this.getRandomWord(Math.random() > 0.3 ? 'hard' : 'medium');
-    if (score < 5000) return this.getRandomWord(Math.random() > 0.5 ? 'epic' : 'hard');
-    return this.getRandomWord(Math.random() > 0.2 ? 'epic' : 'hard');
+  getWordForDifficulty(difficulty) {
+    let listName = 'easy';
+    if (difficulty === 'normal') listName = 'medium';
+    if (difficulty === 'hard') listName = 'hard';
+    if (difficulty === 'hell') listName = 'epic';
+
+    const list = this.words[listName] || this.words.easy;
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  getBossWord() {
+    // Combine two random epic/hard words with a hyphen for a long 20+ letter word
+    const list1 = this.words.epic;
+    const list2 = this.words.hard;
+    const word1 = list1[Math.floor(Math.random() * list1.length)];
+    const word2 = list2[Math.floor(Math.random() * list2.length)];
+    return `${word1}-${word2}`;
   }
 }
