@@ -39,7 +39,7 @@ export const wordList = {
     "fathom", "fervent", "feyborn", "flicker", "frozen", "fabled",
     "ghastly", "gilded", "glacier", "goblin", "golem", "gravure",
     "grotto", "hallow", "harrow", "healer", "hexfire", "hollow",
-    "Horror", "hunted", "ignite", "illusion", "immune", "invoke",
+    "horror", "hunted", "ignite", "illusion", "immune", "invoke",
     "jackal", "keeper", "kinetic", "lantern", "legend", "leviathan",
     "lingers", "litany", "lurking", "lyrical", "mantle", "marvel",
     "mayhem", "mentor", "miasma", "mortal", "mourne", "mystify",
