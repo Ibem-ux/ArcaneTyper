@@ -491,3 +491,100 @@ h2 {
     opacity: 0;
   }
 }
+
+/* ── Scribe mode controls ───────────────────────────── */
+.scribe-control-select {
+  background: rgba(43, 27, 70, 0.8);
+  color: var(--accent-primary);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-family: var(--font-family);
+  border-radius: 5px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+.scribe-control-select:hover,
+.scribe-control-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.scribe-control-select option {
+  background: var(--bg-deep);
+  color: var(--text-main);
+}
+
+/* ── Scribe text container ──────────────────────────── */
+#practice-text-container .word {
+  margin-right: 12px;
+  margin-bottom: 12px;
+  display: inline-flex;
+  white-space: pre;
+  position: relative;
+}
+
+#practice-text-container .word.word-done {
+  opacity: 0.5;
+}
+
+#practice-text-container .letter {
+  transition: color 0.08s ease;
+  position: relative;
+}
+
+#practice-text-container .letter.correct {
+  color: var(--text-main);
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+
+#practice-text-container .letter.incorrect {
+  color: var(--accent-danger);
+  background: rgba(255, 75, 75, 0.15);
+  border-radius: 2px;
+}
+
+#practice-text-container .letter.extra {
+  color: #ff2222;
+  background: rgba(255, 30, 30, 0.25);
+  border-radius: 2px;
+  font-size: 0.95em;
+}
+
+#practice-text-container .letter.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  background-color: var(--accent-primary);
+  animation: blink 1s infinite step-end;
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+
+/* ── Results stat grid ──────────────────────────────── */
+.result-stat-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+}
+
+.result-stat-label {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.result-stat-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+}

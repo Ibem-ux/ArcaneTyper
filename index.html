@@ -125,37 +125,81 @@
 
       <!-- Scribe's Trial UI -->
       <div id="practice-ui" class="overlay-menu hidden"
-        style="background: rgba(10, 5, 15, 0.95); justify-content: flex-start; padding-top: 10vh;">
+        style="background: rgba(10, 5, 15, 0.95); justify-content: flex-start; padding-top: 6vh;">
+
+        <!-- Top bar: title + mode controls + live stats -->
         <div class="practice-header"
-          style="display: flex; justify-content: space-between; width: 80%; max-width: 800px; margin-bottom: 2rem;">
-          <h2 style="margin: 0; color: #b892b0; font-size: 1.5rem;">THE SCRIBE'S TRIAL</h2>
-          <div style="display: flex; gap: 20px; font-family: monospace; font-size: 1.2rem; color: #ffd700;">
+          style="display: flex; justify-content: space-between; align-items: center; width: 80%; max-width: 800px; margin-bottom: 1rem;">
+          <h2 style="margin: 0; color: #b892b0; font-size: 1.3rem; letter-spacing: 3px;">THE SCRIBE'S TRIAL</h2>
+
+          <!-- Mode + Duration selectors -->
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="scribe-mode-select" class="scribe-control-select">
+              <option value="words">Words</option>
+              <option value="timed">Timed</option>
+            </select>
+            <select id="scribe-duration-select" class="scribe-control-select hidden">
+              <option value="15">15s</option>
+              <option value="30" selected>30s</option>
+              <option value="60">60s</option>
+            </select>
+          </div>
+
+          <!-- Live stats + timer -->
+          <div
+            style="display: flex; gap: 20px; font-family: monospace; font-size: 1.1rem; color: #ffd700; align-items: center;">
             <div>WPM: <span id="practice-wpm">0</span></div>
             <div>ACC: <span id="practice-acc">100</span>%</div>
+            <div id="scribe-timer-container" class="hidden" style="font-size: 1.4rem; font-weight: 700;">
+              <span id="scribe-timer-display" style="color: var(--accent-primary);">30</span>s
+            </div>
           </div>
         </div>
 
         <div id="practice-text-container"
-          style="width: 80%; max-width: 800px; max-height: 40vh; overflow-y: hidden; font-size: 1.4rem; color: #666; line-height: 1.6; text-align: left; position: relative; padding-bottom: 2rem;">
+          style="width: 80%; max-width: 800px; max-height: 38vh; overflow-y: hidden; font-size: 1.4rem; color: #666; line-height: 1.8; text-align: left; position: relative; padding-bottom: 2rem;">
           <!-- Words injected here via JS -->
         </div>
 
-        <div style="margin-top: 3rem; color: #888; font-size: 0.9rem;">
+        <div style="margin-top: 1.5rem; color: #888; font-size: 0.85rem;">
           Continue typing to cast. Press <kbd style="background: #333; padding: 2px 6px; border-radius: 4px;">Esc</kbd>
           to end trial.
         </div>
 
         <!-- Practice Results -->
         <div id="practice-results" class="hidden"
-          style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #110a17; padding: clamp(1rem, 5vh, 3rem); border: 2px solid #b892b0; border-radius: 12px; text-align: center; box-shadow: 0 0 30px rgba(184, 146, 176, 0.3);">
-          <h2 style="color: #ffd700; margin-bottom: 1.5rem;">TRIAL COMPLETE</h2>
-          <div style="font-size: 1.5rem; margin-bottom: 1rem;">Final Speed: <span id="practice-res-wpm"
-              style="color: #ffd700;">0</span> WPM</div>
-          <div style="font-size: 1.2rem; margin-bottom: 1rem;">Accuracy: <span id="practice-res-acc"
-              style="color: #00bfa5;">100</span>%</div>
+          style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #110a17; padding: clamp(1rem, 4vh, 2.5rem) clamp(1.5rem, 5vw, 3rem); border: 2px solid #b892b0; border-radius: 12px; text-align: center; box-shadow: 0 0 30px rgba(184, 146, 176, 0.3); min-width: 420px;">
+          <h2 style="color: #ffd700; margin-bottom: 1.2rem; font-size: 1.6rem;">TRIAL COMPLETE</h2>
+
+          <!-- Main stats grid -->
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 2rem; margin-bottom: 1.2rem; text-align: left;">
+            <div class="result-stat-block">
+              <div class="result-stat-label">WPM</div>
+              <div class="result-stat-value" id="practice-res-wpm" style="color: #ffd700;">0</div>
+            </div>
+            <div class="result-stat-block">
+              <div class="result-stat-label">RAW WPM</div>
+              <div class="result-stat-value" id="practice-res-raw-wpm" style="color: #b892b0;">0</div>
+            </div>
+            <div class="result-stat-block">
+              <div class="result-stat-label">ACCURACY</div>
+              <div class="result-stat-value" id="practice-res-acc" style="color: #00bfa5;">100%</div>
+            </div>
+            <div class="result-stat-block">
+              <div class="result-stat-label">CONSISTENCY</div>
+              <div class="result-stat-value" id="practice-res-consistency" style="color: #ff9800;">100%</div>
+            </div>
+          </div>
+
+          <!-- WPM Graph -->
+          <div style="margin-bottom: 1.2rem;">
+            <canvas id="wpm-graph-canvas" width="380" height="100"
+              style="border: 1px solid rgba(184,146,176,0.2); border-radius: 6px; display: block; margin: 0 auto;"></canvas>
+          </div>
 
           <div id="scribe-highscore-form" class="hidden"
-            style="margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            style="margin-bottom: 1.2rem; display: flex; flex-direction: column; align-items: center; gap: 10px;">
             <h3 style="color: var(--accent-primary); letter-spacing: 2px;">NEW LEGEND!</h3>
             <input type="text" id="scribe-name-input" maxlength="15" placeholder="Anonymous Scribe"
               style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent-primary); color: white; padding: 8px 15px; text-align: center; border-radius: 5px; width: 100%;" />

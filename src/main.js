@@ -44,9 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
   const tabBtns = document.querySelectorAll('.tab-btn');
 
+  // Scribe mode controls
+  const scribeModeSelect = document.getElementById('scribe-mode-select');
+  const scribeDurationSelect = document.getElementById('scribe-duration-select');
+  const scribeTimerContainer = document.getElementById('scribe-timer-container');
+
   // Difficulty Select
   const difficultySelect = document.getElementById('difficulty-select');
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
+
+  // WPM Graph
+  const wpmGraphCanvas = document.getElementById('wpm-graph-canvas');
 
   let pendingStats = null;
   let pendingScribeStats = null;
@@ -56,6 +64,31 @@ document.addEventListener('DOMContentLoaded', () => {
     menuBestWpm.innerText = game.stats.bestWPM;
   }
   updateMenuStats();
+
+  // ── Scribe mode selector ───────────────────────────────────────────────────
+
+  function applyModeUI() {
+    const isTimed = scribeModeSelect.value === 'timed';
+    scribeDurationSelect.classList.toggle('hidden', !isTimed);
+    scribeTimerContainer.classList.toggle('hidden', !isTimed);
+    // Sync the initial timer label to the selected duration
+    const timerDisplay = document.getElementById('scribe-timer-display');
+    if (timerDisplay) timerDisplay.textContent = scribeDurationSelect.value;
+  }
+  applyModeUI(); // Set correct initial state
+
+  scribeModeSelect.addEventListener('change', () => {
+    applyModeUI();
+    // Restart if practice is already active
+    if (scribe.isRunning) startPractice();
+  });
+
+  scribeDurationSelect.addEventListener('change', () => {
+    const timerDisplay = document.getElementById('scribe-timer-display');
+    if (timerDisplay) timerDisplay.textContent = scribeDurationSelect.value;
+    // Restart if practice is already active
+    if (scribe.isRunning) startPractice();
+  });
 
   // ── Game Flow ─────────────────────────────────────────────────────────────
 
@@ -87,7 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
     practiceBtn.blur();
     practiceRetryBtn.blur();
 
-    scribe.start();
+    const mode = scribeModeSelect.value;
+    const duration = parseInt(scribeDurationSelect.value, 10);
+
+    // Show/hide timer
+    const isTimed = mode === 'timed';
+    scribeTimerContainer.classList.toggle('hidden', !isTimed);
+
+    scribe.start(mode, duration);
   }
 
   function quitPractice() {
@@ -112,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     gameOverMenu.classList.add('active');
     updateMenuStats();
 
-    // Check against global top 10 (async)
     const qualifies = await leaderboard.isTop10(
       game.difficulty,
       finalStats.score,
@@ -162,7 +201,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Scribe Trial ──────────────────────────────────────────────────────────
 
-  scribe.onTrialComplete = async (wpm, accuracy) => {
+  scribe.onTrialComplete = async (wpm, rawWpm, accuracy, consistency, wpmSamples) => {
+    // Update accuracy display (already has % in the span)
+    const resAcc = document.getElementById('practice-res-acc');
+    const resConsistency = document.getElementById('practice-res-consistency');
+    if (resAcc) resAcc.innerText = accuracy + '%';
+    if (resConsistency) resConsistency.innerText = consistency + '%';
+
+    // Draw WPM graph
+    drawWpmGraph(wpmSamples);
+
     const scribeScore = Math.floor(wpm * (accuracy / 100));
 
     const qualifies = await leaderboard.isTop10('scribe', scribeScore, wpm, accuracy);
@@ -171,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
       scribeHighscoreForm.classList.remove('hidden');
       practiceRetryBtn.classList.add('hidden');
       practiceReturnBtn.classList.add('hidden');
-      pendingScribeStats = { wpm, accuracy, score: scribeScore };
+      pendingScribeStats = { wpm, rawWpm, accuracy, consistency, score: scribeScore };
       scribeNameInput.value = '';
       scribeNameInput.focus();
     } else {
@@ -207,6 +255,101 @@ document.addEventListener('DOMContentLoaded', () => {
     openLeaderboard('wpm', 'scribe');
   });
 
+  // ── WPM Graph ─────────────────────────────────────────────────────────────
+
+  function drawWpmGraph(samples) {
+    if (!wpmGraphCanvas) return;
+    const ctx = wpmGraphCanvas.getContext('2d');
+    const W = wpmGraphCanvas.width;
+    const H = wpmGraphCanvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Background
+    ctx.fillStyle = 'rgba(15,10,20,0.9)';
+    ctx.fillRect(0, 0, W, H);
+
+    if (!samples || samples.length < 2) {
+      ctx.fillStyle = 'rgba(184,146,176,0.4)';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Not enough data', W / 2, H / 2);
+      return;
+    }
+
+    const pad = { top: 12, right: 12, bottom: 22, left: 36 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+
+    const maxWpm = Math.max(...samples, 10);
+    const minWpm = Math.max(0, Math.min(...samples) - 5);
+
+    const xStep = chartW / (samples.length - 1);
+    const toX = (i) => pad.left + i * xStep;
+    const toY = (v) => pad.top + chartH - ((v - minWpm) / (maxWpm - minWpm || 1)) * chartH;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 4; g++) {
+      const y = pad.top + (g / 4) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + chartW, y);
+      ctx.stroke();
+
+      const label = Math.round(maxWpm - (g / 4) * (maxWpm - minWpm));
+      ctx.fillStyle = 'rgba(184,146,176,0.6)';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(label, pad.left - 4, y + 3);
+    }
+
+    // X-axis: time labels
+    ctx.fillStyle = 'rgba(184,146,176,0.5)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    const labelEvery = Math.ceil(samples.length / 6);
+    samples.forEach((_, i) => {
+      if (i % labelEvery === 0 || i === samples.length - 1) {
+        ctx.fillText(`${i + 1}s`, toX(i), H - 4);
+      }
+    });
+
+    // Gradient fill under the line
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+    grad.addColorStop(0, 'rgba(255,215,0,0.25)');
+    grad.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(samples[0]));
+    samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
+    ctx.lineTo(toX(samples.length - 1), pad.top + chartH);
+    ctx.lineTo(toX(0), pad.top + chartH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Gold line
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(samples[0]));
+    samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(255,215,0,0.5)';
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Dots at each data point
+    ctx.fillStyle = '#ffd700';
+    samples.forEach((v, i) => {
+      ctx.beginPath();
+      ctx.arc(toX(i), toY(v), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
   // ── Leaderboard ───────────────────────────────────────────────────────────
 
   function openLeaderboard(category = 'score', forceDifficulty = null) {
@@ -225,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function renderLeaderboard(category) {
-    // Update active tab
     tabBtns.forEach(btn => {
       btn.classList.toggle('active', btn.dataset.category === category);
     });
