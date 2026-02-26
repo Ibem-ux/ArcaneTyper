@@ -1,11 +1,14 @@
 import { Sprite } from './Sprite.js';
 
 export class Word {
-    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY, isBossAttack = false) {
+    constructor(text, canvasWidth, canvasHeight, speedMultiplier, targetX, targetY, options = {}) {
         this.text = text;
+        this.isBossAttack = options.isBossAttack || false;
+
+        // Variants: 'normal', 'armored', 'ghost', 'swarm'
+        this.variant = options.variant || 'normal';
         this.typed = "";
         this.untyped = text;
-        this.isBossAttack = isBossAttack;
 
         // Caching text measurements
         this._lastTypedStr = null;
@@ -59,9 +62,15 @@ export class Word {
         // Speed
         const baseSpeed = 0.8 + Math.random() * 0.6;
         let finalSpeed = (baseSpeed * speedMultiplier) * (1 - (text.length * 0.02));
+
         if (this.isBossAttack) {
             finalSpeed *= 0.35;
+        } else if (this.variant === 'swarm') {
+            finalSpeed *= 1.8; // Swarm is very fast
+        } else if (this.variant === 'armored') {
+            finalSpeed *= 0.6; // Armored is slow
         }
+
         this.speed = finalSpeed;
 
         // Velocity vector towards target
@@ -115,6 +124,16 @@ export class Word {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
+        // Ghost oscillating opacity
+        if (this.variant === 'ghost' && !this.isTargeted) {
+            // Oscillate opacity between 0.0 and 1.0 based on time + unique offset
+            const time = performance.now();
+            const wave = Math.sin((time / 400) + (this.x / 100)); // Sine wave
+            this.opacity = Math.max(0, wave); // Clamp at 0 so it stays invisible for a chunk of the cycle
+        } else if (this.variant === 'ghost' && this.isTargeted) {
+            this.opacity = 1.0; // Force visible when targeted
+        }
+
         // Update sprite animation frame
         if (this.sprite) {
             this.sprite.update();
@@ -134,7 +153,7 @@ export class Word {
             ctx.shadowBlur = 15;
         }
 
-        ctx.font = 'bold 32px Cinzel';
+        ctx.font = 'bold 32px Cinzel, serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
@@ -173,6 +192,29 @@ export class Word {
         } else {
             ctx.rect(boxX, boxY, boxWidth, boxHeight);
         }
+
+        // Armored word has a metallic/red border
+        if (this.variant === 'armored') {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ff4b4b'; // Red armor core
+            ctx.stroke();
+
+            // Draw a subtle lock icon next to the word to visually hint it's different
+            ctx.fillStyle = '#ff4b4b';
+            ctx.font = '16px serif';
+            ctx.fillText('🛡️', boxX - 25, textYOffset);
+
+            ctx.font = 'bold 32px Cinzel, serif'; // Restore font
+        }
+
+        // Swarm word has a smaller, greener box outline
+        if (this.variant === 'swarm') {
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00e5ff';
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fill();
 
         // Typed part

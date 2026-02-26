@@ -3,12 +3,12 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ArcaneTyper — The Enchanted Library</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArcaneTyper — The Enchanted Library</title>
 </head>
 
 <body>
@@ -19,6 +19,22 @@
         <div class="stat-box">
           <span class="label">SCORE</span>
           <span id="score-display" class="value">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">COMBO</span>
+          <div style="display: flex; align-items: baseline; gap: 5px;">
+            <span id="combo-display" class="value combo-value">0</span>
+            <span id="multiplier-display"
+              style="font-size: 0.9rem; color: #ffd700; font-weight: bold; opacity: 0; transition: opacity 0.3s;">x1.0</span>
+          </div>
+        </div>
+        <div class="stat-box">
+          <span class="label">MANA</span>
+          <div class="mana-bar-container">
+            <div id="mana-bar-fill" class="mana-bar-fill"></div>
+            <span id="mana-text" class="mana-text">0 / 10</span>
+          </div>
+          <span id="mana-hint" class="mana-hint hidden">Press <kbd>Tab</kbd> to cast Nova!</span>
         </div>
         <div class="stat-box">
           <span class="label">TYPING SPEED</span>
@@ -39,7 +55,7 @@
       <!-- Start Menu -->
       <div id="start-menu" class="overlay-menu active">
         <h1>ARCANE<span class="highlight">TYPER</span></h1>
-        <p class="subtitle">Enchanted Library Edition - v1.10.1</p>
+        <p class="subtitle">Enchanted Library Edition - v2.0</p>
         <div class="stats-overview">
           <p>Mastery Score: <span id="menu-best-score">0</span></p>
           <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
@@ -59,8 +75,38 @@
           <button id="practice-btn" class="primary-btn"
             style="background: linear-gradient(45deg, #1e0b2b, #4a2c68); border-color: #b892b0;">THE SCRIBE'S TRIAL
             (PRACTICE)</button>
+          <button id="workshop-btn" class="primary-btn"
+            style="background: linear-gradient(45deg, #2b1b0b, #684a2c); border-color: #ffd700; margin-top: clamp(8px, 1.5vh, 15px);">THE
+            WORKSHOP (UPGRADES)</button>
           <button id="open-leaderboard-btn" class="primary-btn" style="margin-top: clamp(8px, 1.5vh, 15px);">HALL OF
             FAME</button>
+        </div>
+
+        <button id="profile-btn" class="primary-btn"
+          style="border-color: #00e5ff; color: #00e5ff; margin-top: clamp(8px, 1.5vh, 15px);">MAGE PROFILE</button>
+
+        <!-- Background Silhouette Image -->
+        <div id="background-mage" class="mage-avatar-background">
+          <!-- SVG Filter for Image Processing -->
+          <svg width="0" height="0" style="position:absolute;">
+            <filter id="mage-stencil" color-interpolation-filters="sRGB">
+              <!-- Convert luminance to alpha (inverted) -->
+              <feColorMatrix type="matrix" values="
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                -0.333 -0.333 -0.333 0 1" result="mask" />
+              <!-- Flood with dark purple -->
+              <feFlood flood-color="#3a2b58" result="color" />
+              <!-- Mask the color -->
+              <feComposite in="color" in2="mask" operator="in" />
+            </filter>
+          </svg>
+
+          <div class="mage-silhouette-img">
+            <img src="/mage-bg.png" alt="Mage Silhouette" />
+            <div class="mage-wand-glow-img" id="avatar-wand-glow"></div>
+          </div>
         </div>
       </div>
 
@@ -105,22 +151,69 @@
           <button class="tab-btn" data-category="accuracy">The Flawless Oracles</button>
         </div>
         <div class="leaderboard-container">
-          <table class="leaderboard-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Mage Name</th>
-                <th>Score</th>
-                <th>WPM</th>
-                <th>Acc</th>
-              </tr>
-            </thead>
-            <tbody id="leaderboard-body">
-              <!-- JS Populated -->
-            </tbody>
-          </table>
+          <div class="leaderboard-scroll-box">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Mage Name</th>
+                  <th>Score</th>
+                  <th>WPM</th>
+                  <th>Acc</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <!-- JS Populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
         <button id="close-leaderboard-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
+      </div>
+
+      <!-- Workshop Menu -->
+      <div id="workshop-menu" class="overlay-menu hidden">
+        <h2>THE WORKSHOP</h2>
+        <div class="stats-overview" style="margin-bottom: 20px;">
+          <p style="color: #ffd700; font-size: 1.2rem;">Available XP: <span id="workshop-xp">0</span></p>
+          <p style="color: #b892b0;">Player Rank: <span id="workshop-level">1</span></p>
+        </div>
+
+        <div style="display: flex; gap: 2rem; width: 100%; max-width: 800px; justify-content: space-around;">
+          <!-- Skill Tree -->
+          <div class="workshop-panel">
+            <h3 style="color: #00e5ff; margin-bottom: 1rem;">Mystic Arts (Skills)</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="skill-mana-btn" class="skill-node locked" data-cost="1000">
+                <span class="skill-name">Deep Reserves (Max Mana +20)</span>
+                <span class="skill-cost">1000 XP</span>
+              </button>
+              <button id="skill-life-btn" class="skill-node locked" data-cost="2500">
+                <span class="skill-name">Aegis Ward (Start with 1 Extra Barrier)</span>
+                <span class="skill-cost">2500 XP</span>
+              </button>
+              <button id="skill-combo-btn" class="skill-node locked" data-cost="5000">
+                <span class="skill-name">Quickened Mind (Start games at 10 Combo)</span>
+                <span class="skill-cost">5000 XP</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Wand Customization -->
+          <div class="workshop-panel">
+            <h3 style="color: #d500f9; margin-bottom: 1rem;">Arcane Focus (Wand Styles)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <button class="wand-style-btn active" data-color="#ff00ff">Amethyst</button>
+              <button class="wand-style-btn" data-color="#00ffff">Sapphire</button>
+              <button class="wand-style-btn" data-color="#ff4500">Ruby</button>
+              <button class="wand-style-btn" data-color="#32cd32">Emerald</button>
+              <button class="wand-style-btn" data-color="#ffd700">Topaz</button>
+              <button class="wand-style-btn" data-color="#ffffff">Diamond</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="close-workshop-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
       </div>
 
       <!-- Scribe's Trial UI -->
@@ -213,8 +306,109 @@
         </div>
       </div>
 
+      <!-- Mage Registration / Character Creation Menu -->
+      <div id="character-creation-menu" class="overlay-menu hidden" style="z-index: 40;">
+        <h2 id="cc-title" style="margin-bottom: 0.5rem; font-size: 2rem;">MAGE REGISTRATION</h2>
+        <p id="cc-subtitle" style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">Forge your
+          identity before entering
+          the library.</p>
+        <div
+          style="display: flex; flex-direction: column; gap: 0.8rem; width: 400px; max-width: 90vw; background: rgba(0, 0, 0, 0.6); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--accent-primary); box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);">
+
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <label style="color: var(--accent-primary); font-size: 0.8rem; letter-spacing: 1px;">True Name (Login
+              ID):</label>
+            <input type="text" id="cc-username" maxlength="20" placeholder="e.g. invoker123"
+              style="background: rgba(0,0,0,0.8); border: 1px solid var(--text-muted); color: white; padding: 6px; text-align: center; border-radius: 5px; font-family: var(--font-family); font-size: 1rem; text-transform: lowercase; outline: none;" />
+          </div>
+
+          <div id="cc-nickname-container" style="display: flex; flex-direction: column; gap: 3px;">
+            <label style="color: var(--accent-primary); font-size: 0.8rem; letter-spacing: 1px;">Mage Title (Display
+              Name):</label>
+            <input type="text" id="cc-name" maxlength="15" placeholder="e.g. The Invoker"
+              style="background: rgba(0,0,0,0.8); border: 1px solid var(--text-muted); color: white; padding: 6px; text-align: center; border-radius: 5px; font-family: var(--font-family); font-size: 1rem; outline: none;" />
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <label style="color: var(--accent-primary); font-size: 0.8rem; letter-spacing: 1px;">Secret Incantation
+              (Password):</label>
+            <input type="password" id="cc-password" placeholder="Min 6 characters"
+              style="background: rgba(0,0,0,0.8); border: 1px solid var(--text-muted); color: white; padding: 6px; text-align: center; border-radius: 5px; font-family: var(--font-family); font-size: 1rem; outline: none;" />
+          </div>
+
+          <div id="cc-class-container" style="display: flex; flex-direction: column; gap: 3px;">
+            <label style="color: var(--accent-primary); font-size: 0.8rem; letter-spacing: 1px;">Discipline:</label>
+            <select id="cc-class"
+              style="background: rgba(0,0,0,0.8); border: 1px solid var(--text-muted); color: var(--accent-primary); padding: 6px; text-align: center; border-radius: 5px; font-family: var(--font-family); font-size: 1rem; appearance: none; cursor: pointer; outline: none;">
+              <option value="Scholar">The Scholar (Balanced)</option>
+              <option value="Pyromancer">The Pyromancer (Destructive)</option>
+              <option value="Oracle">The Oracle (Accurate)</option>
+            </select>
+          </div>
+
+          <div id="cc-error-msg"
+            style="color: var(--accent-danger); font-size: 0.85rem; text-align: center; min-height: 15px;"></div>
+
+          <button id="cc-create-btn" class="primary-btn" style="margin-top: 0.2rem; width: 100%; padding: 8px;">SEAL
+            MAGE
+            CARD</button>
+        </div>
+
+        <a href="#" id="cc-toggle-mode"
+          style="color: var(--accent-primary); text-align: center; font-size: 0.95rem; text-decoration: none; margin-top: 15px; padding: 8px; transition: color 0.3s ease; text-shadow: 0 0 5px var(--accent-glow);">Already
+          have a Mage Card?</a>
+      </div>
+
+      <!-- Mage Profile Menu -->
+      <div id="profile-menu" class="overlay-menu hidden" style="z-index: 35;">
+        <h2>MAGE PROFILE</h2>
+        <div
+          style="display: flex; flex-direction: column; gap: 2rem; width: 400px; max-width: 90vw; background: rgba(0, 0, 0, 0.6); padding: 2rem; border-radius: 12px; border: 1px solid #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);">
+
+          <div style="text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Mage
+              Title</p>
+            <h3 id="profile-nickname"
+              style="color: #ffd700; font-size: 2rem; margin-top: 5px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
+              Unknown Mage</h3>
+          </div>
+
+          <div style="text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">True
+              Name (Login ID)</p>
+            <p id="profile-username" style="color: white; font-size: 1.2rem; margin-top: 5px; font-family: monospace;">
+              unknown</p>
+          </div>
+
+          <div style="text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
+              Discipline</p>
+            <p id="profile-class" style="color: #00e5ff; font-size: 1.2rem; margin-top: 5px;">Novice</p>
+          </div>
+
+          <div
+            style="text-align: center; padding: 15px; border: 1px dashed var(--text-muted); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">Badges & Achievements</p>
+            <p style="color: #b892b0; font-size: 0.85rem; margin-top: 10px; font-style: italic;">Coming Soon in Phase 4
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 1rem;">
+            <button id="close-profile-btn" class="primary-btn" style="flex: 1; font-size: 0.9rem;">RETURN</button>
+            <button id="logout-btn" class="primary-btn"
+              style="flex: 1; border-color: var(--accent-danger); color: var(--accent-danger); font-size: 0.9rem;">SEVER
+              BOND</button>
+          </div>
+        </div>
+      </div>
+
       <!-- The Game Canvas -->
       <canvas id="game-canvas"></canvas>
+
+      <!-- Mobile Support Elements -->
+      <textarea id="mobile-input" autocomplete="off" autocorrect="off" autocapitalize="off"
+        spellcheck="false"></textarea>
+      <button id="mobile-nova-btn" class="primary-btn hidden">CAST NOVA</button>
     </div>
   </div>
   <script type="module" src="/src/main.js"></script>

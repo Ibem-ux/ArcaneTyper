@@ -2,8 +2,21 @@ import './style.css';
 import { Game } from './Game.js';
 import { Leaderboard } from './Leaderboard.js';
 import { Scribe } from './Scribe.js';
+import { supabase } from './supabaseClient.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Ultra-strict font preloader for Canvas
+  // This physically forces the browser to download and parse the font before
+  // any Javascript rendering logic continues.
+  try {
+    const cinzelFont = new FontFace('Cinzel', 'url(https://fonts.gstatic.com/s/cinzel/v19/8vIJ7ww63mVu7gtzRzj2-Bs.woff2)');
+    await cinzelFont.load();
+    document.fonts.add(cinzelFont);
+  } catch (e) {
+    console.warn("Manual font preload failed, relying on CSS fallback. Error:", e);
+  }
+  await document.fonts.ready;
+
   const game = new Game('game-canvas');
   const leaderboard = new Leaderboard();
   const scribe = new Scribe(game.dictionary, game.stats);
@@ -14,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameOverMenu = document.getElementById('game-over-menu');
   const leaderboardMenu = document.getElementById('leaderboard-menu');
   const practiceUi = document.getElementById('practice-ui');
+  const workshopMenu = document.getElementById('workshop-menu');
 
   // Menu Stats
   const menuBestScore = document.getElementById('menu-best-score');
@@ -42,7 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const restartBtn = document.getElementById('restart-btn');
   const openLeaderboardBtn = document.getElementById('open-leaderboard-btn');
   const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
+  const workshopBtn = document.getElementById('workshop-btn');
+  const closeWorkshopBtn = document.getElementById('close-workshop-btn');
+  const profileBtn = document.getElementById('profile-btn');
   const tabBtns = document.querySelectorAll('.tab-btn');
+
+  // Workshop Elements
+  const workshopXp = document.getElementById('workshop-xp');
+  const workshopLevel = document.getElementById('workshop-level');
+  const skillNodes = document.querySelectorAll('.skill-node');
+  const wandBtns = document.querySelectorAll('.wand-style-btn');
 
   // Scribe mode controls
   const scribeModeSelect = document.getElementById('scribe-mode-select');
@@ -56,12 +79,201 @@ document.addEventListener('DOMContentLoaded', () => {
   // WPM Graph
   const wpmGraphCanvas = document.getElementById('wpm-graph-canvas');
 
+  // Mobile Support
+  const mobileInput = document.getElementById('mobile-input');
+  const mobileNovaBtn = document.getElementById('mobile-nova-btn');
+
+  // Mage Card / Character Creation UI
+  const ccMenu = document.getElementById('character-creation-menu');
+  const ccUsername = document.getElementById('cc-username');
+  const ccName = document.getElementById('cc-name');
+  const ccNicknameContainer = document.getElementById('cc-nickname-container');
+  const ccPassword = document.getElementById('cc-password');
+  const ccClass = document.getElementById('cc-class');
+  const ccClassContainer = document.getElementById('cc-class-container');
+  const ccCreateBtn = document.getElementById('cc-create-btn');
+  const ccErrorMsg = document.getElementById('cc-error-msg');
+  const ccToggleMode = document.getElementById('cc-toggle-mode');
+  const ccTitle = document.getElementById('cc-title');
+  const ccSubtitle = document.getElementById('cc-subtitle');
+
+  // Profile Menu UI
+  const profileMenu = document.getElementById('profile-menu');
+  const closeProfileBtn = document.getElementById('close-profile-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const profileNickname = document.getElementById('profile-nickname');
+  const profileUsernameUI = document.getElementById('profile-username');
+  const profileClassUI = document.getElementById('profile-class');
+
   let pendingStats = null;
   let pendingScribeStats = null;
+
+  // ── Authentication & Initialization ───────────────────────────────────────
+
+  let isLoginMode = false;
+
+  async function checkSession() {
+    startMenu.classList.add('hidden');
+    startMenu.classList.remove('active');
+
+    if (!supabase) {
+      console.warn("Supabase not configured. Bypassing auth.");
+      if (!game.stats.mageName) {
+        showCharacterCreation();
+      } else {
+        startMenu.classList.remove('hidden');
+        startMenu.classList.add('active');
+      }
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      if (session.user.user_metadata && session.user.user_metadata.mage_title) {
+        game.stats.mageName = session.user.user_metadata.mage_title;
+        game.stats.saveProgression();
+      } else if (!game.stats.mageName && session.user.email) {
+        // Fallback for legacy accounts
+        game.stats.mageName = session.user.email.split('@')[0];
+        game.stats.saveProgression();
+      }
+      startMenu.classList.remove('hidden');
+      startMenu.classList.add('active');
+    } else {
+      showCharacterCreation();
+    }
+  }
+
+  function showCharacterCreation() {
+    startMenu.classList.add('hidden');
+    startMenu.classList.remove('active');
+
+    ccMenu.classList.remove('hidden');
+    ccMenu.classList.add('active');
+    ccUsername.focus();
+  }
+
+  if (ccToggleMode) {
+    ccToggleMode.addEventListener('click', (e) => {
+      e.preventDefault();
+      isLoginMode = !isLoginMode;
+
+      ccErrorMsg.innerText = '';
+
+      if (isLoginMode) {
+        ccTitle.innerText = "MAGE RECOGNITION";
+        ccSubtitle.innerText = "Speak your True Name and Incantation.";
+        ccClassContainer.style.display = 'none';
+        ccNicknameContainer.style.display = 'none';
+        ccCreateBtn.innerText = "ENTER LIBRARY";
+        ccToggleMode.innerText = "I need to register a new Mage Card.";
+      } else {
+        ccTitle.innerText = "MAGE REGISTRATION";
+        ccSubtitle.innerText = "Forge your identity before entering the library.";
+        ccClassContainer.style.display = 'flex';
+        ccNicknameContainer.style.display = 'flex';
+        ccCreateBtn.innerText = "SEAL MAGE CARD";
+        ccToggleMode.innerText = "Already have a Mage Card?";
+      }
+    });
+  }
+
+  ccCreateBtn.addEventListener('click', async () => {
+    const username = ccUsername.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const displayName = ccName.value.trim();
+    const password = ccPassword ? ccPassword.value : '';
+    const discipline = ccClass ? ccClass.value : 'Scholar';
+
+    if (!username) {
+      if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must have a True Name (Login ID).";
+      return;
+    }
+
+    if (!isLoginMode && !displayName) {
+      if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must have a Title (Display Name).";
+      return;
+    }
+
+    if (supabase && password) {
+      ccCreateBtn.disabled = true;
+      const fakeEmail = `${username}@gmail.com`;
+
+      if (isLoginMode) {
+        // LOGIN
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: fakeEmail,
+          password: password,
+        });
+
+        ccCreateBtn.disabled = false;
+
+        if (error) {
+          if (ccErrorMsg) ccErrorMsg.innerText = error.message;
+          return;
+        }
+
+        if (data.user && data.user.user_metadata && data.user.user_metadata.mage_title) {
+          game.stats.mageName = data.user.user_metadata.mage_title;
+        }
+
+      } else {
+        // SIGN UP
+        const { data, error } = await supabase.auth.signUp({
+          email: fakeEmail,
+          password: password,
+          options: {
+            data: {
+              mage_title: displayName,
+              discipline: discipline
+            }
+          }
+        });
+
+        ccCreateBtn.disabled = false;
+
+        if (error) {
+          if (error.message.toLowerCase().includes('rate limit')) {
+            console.warn("Supabase rate limit exceeded. Falling back to local profile.");
+            if (ccErrorMsg) ccErrorMsg.innerText = "The magical library is overwhelmed (Rate Limit). Granted temporary guest access.";
+            game.stats.mageName = displayName;
+            // Will proceed to local fallback flow
+          } else {
+            if (ccErrorMsg) ccErrorMsg.innerText = error.message;
+            return;
+          }
+        } else {
+          game.stats.mageName = displayName;
+        }
+      }
+    } else {
+      // Local fallback
+      game.stats.mageName = isLoginMode ? username : displayName;
+    }
+
+    game.stats.saveProgression();
+
+    if (ccErrorMsg) ccErrorMsg.innerText = '';
+    ccMenu.classList.add('hidden');
+    ccMenu.classList.remove('active');
+
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  // Kick off the initial check
+  checkSession();
 
   function updateMenuStats() {
     menuBestScore.innerText = game.stats.bestScore;
     menuBestWpm.innerText = game.stats.bestWPM;
+
+    // Update Avatar Wand Color
+    const avatarWandGlow = document.getElementById('avatar-wand-glow');
+    if (avatarWandGlow) {
+      avatarWandGlow.style.backgroundColor = game.stats.wandColor;
+      avatarWandGlow.style.boxShadow = `0 0 15px 5px ${game.stats.wandColor}66`; // 66 is hex for roughly 40% opacity
+    }
   }
   updateMenuStats();
 
@@ -104,6 +316,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hud.classList.remove('hidden');
     game.start(difficultySelect.value);
+
+    // Focus invisible input to trigger mobile keyboard
+    mobileInput.value = '';
+    mobileInput.focus();
   }
 
   function startPractice() {
@@ -128,6 +344,10 @@ document.addEventListener('DOMContentLoaded', () => {
     scribeTimerContainer.classList.toggle('hidden', !isTimed);
 
     scribe.start(mode, duration);
+
+    // Focus invisible input to trigger mobile keyboard
+    mobileInput.value = '';
+    mobileInput.focus();
   }
 
   function quitPractice() {
@@ -159,45 +379,19 @@ document.addEventListener('DOMContentLoaded', () => {
       finalStats.getAccuracy()
     );
 
-    if (qualifies) {
-      newHighscoreForm.classList.remove('hidden');
-      restartBtn.classList.add('hidden');
-      pendingStats = finalStats;
-      playerNameInput.value = '';
-      playerNameInput.focus();
-    } else {
-      newHighscoreForm.classList.add('hidden');
-      restartBtn.classList.remove('hidden');
+    // Bypassing prompt: auto submit if they have a profile
+    if (qualifies && game.stats.mageName) {
+      await leaderboard.addScore(
+        game.difficulty,
+        game.stats.mageName,
+        finalStats.score,
+        finalStats.getSessionWPM(),
+        finalStats.getAccuracy()
+      );
     }
-  };
 
-  // ── Submit Arcane Defense Score ───────────────────────────────────────────
-
-  submitScoreBtn.addEventListener('click', async () => {
-    if (!pendingStats) return;
-
-    submitScoreBtn.disabled = true;
-    submitScoreBtn.innerText = 'Sealing...';
-
-    const name = playerNameInput.value.trim() || 'Anonymous Mage';
-    await leaderboard.addScore(
-      game.difficulty, name,
-      pendingStats.score,
-      pendingStats.getSessionWPM(),
-      pendingStats.getAccuracy()
-    );
-
-    submitScoreBtn.disabled = false;
-    submitScoreBtn.innerText = 'SEAL IN HISTORY';
-
-    newHighscoreForm.classList.add('hidden');
     restartBtn.classList.remove('hidden');
-    pendingStats = null;
-
-    gameOverMenu.classList.remove('active');
-    gameOverMenu.classList.add('hidden');
-    openLeaderboard('score');
-  });
+  };
 
   // ── Scribe Trial ──────────────────────────────────────────────────────────
 
@@ -215,45 +409,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const qualifies = await leaderboard.isTop10('scribe', scribeScore, wpm, accuracy);
 
-    if (qualifies) {
-      scribeHighscoreForm.classList.remove('hidden');
-      practiceRetryBtn.classList.add('hidden');
-      practiceReturnBtn.classList.add('hidden');
-      pendingScribeStats = { wpm, rawWpm, accuracy, consistency, score: scribeScore };
-      scribeNameInput.value = '';
-      scribeNameInput.focus();
-    } else {
-      scribeHighscoreForm.classList.add('hidden');
-      practiceRetryBtn.classList.remove('hidden');
-      practiceReturnBtn.classList.remove('hidden');
+    // Auto submit to leaderboard since we have a mage name
+    if (qualifies && game.stats.mageName) {
+      await leaderboard.addScore('scribe', game.stats.mageName, scribeScore, wpm, accuracy);
     }
-  };
-
-  scribeSubmitBtn.addEventListener('click', async () => {
-    if (!pendingScribeStats) return;
-
-    scribeSubmitBtn.disabled = true;
-    scribeSubmitBtn.innerText = 'Sealing...';
-
-    const name = scribeNameInput.value.trim() || 'Anonymous Scribe';
-    await leaderboard.addScore(
-      'scribe', name,
-      pendingScribeStats.score,
-      pendingScribeStats.wpm,
-      pendingScribeStats.accuracy
-    );
-
-    scribeSubmitBtn.disabled = false;
-    scribeSubmitBtn.innerText = 'SEAL IN HISTORY';
 
     scribeHighscoreForm.classList.add('hidden');
     practiceRetryBtn.classList.remove('hidden');
     practiceReturnBtn.classList.remove('hidden');
-    pendingScribeStats = null;
-
-    quitPractice();
-    openLeaderboard('wpm', 'scribe');
-  });
+  };
 
   // ── WPM Graph ─────────────────────────────────────────────────────────────
 
@@ -414,6 +578,150 @@ document.addEventListener('DOMContentLoaded', () => {
     startMenu.classList.add('active');
   });
 
+  // Profile Listeners
+  const backgroundMage = document.getElementById('background-mage');
+
+  const openProfileHandler = async () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+
+    // Populate stats
+    profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
+
+    // Try to get username and class from Supabase session
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Extract username from fake email
+        if (session.user.email) {
+          profileUsernameUI.innerText = session.user.email.split('@')[0];
+        }
+        if (session.user.user_metadata && session.user.user_metadata.discipline) {
+          profileClassUI.innerText = session.user.user_metadata.discipline;
+        } else {
+          profileClassUI.innerText = 'The Scholar (Balanced)'; // Legacy default
+        }
+      }
+    } else {
+      profileUsernameUI.innerText = 'Local Profile';
+      profileClassUI.innerText = 'The Scholar (Balanced)';
+    }
+
+    profileMenu.classList.remove('hidden');
+    profileMenu.classList.add('active');
+  };
+
+  profileBtn.addEventListener('click', openProfileHandler);
+  if (backgroundMage) {
+    backgroundMage.addEventListener('click', openProfileHandler);
+  }
+
+  closeProfileBtn.addEventListener('click', () => {
+    profileMenu.classList.remove('active');
+    profileMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    // Clear local profile reference so they are prompted to login again
+    game.stats.mageName = "";
+    game.stats.saveProgression();
+
+    profileMenu.classList.remove('active');
+    profileMenu.classList.add('hidden');
+
+    // reset to login mode visually
+    isLoginMode = true;
+    ccTitle.innerText = "MAGE RECOGNITION";
+    ccSubtitle.innerText = "Speak your True Name and Incantation.";
+    ccClassContainer.style.display = 'none';
+    ccNicknameContainer.style.display = 'none';
+    ccCreateBtn.innerText = "ENTER LIBRARY";
+    ccToggleMode.innerText = "I need to register a new Mage Card.";
+    ccUsername.value = '';
+    ccName.value = '';
+
+    if (ccPassword) ccPassword.value = '';
+    if (ccErrorMsg) ccErrorMsg.innerText = '';
+
+    showCharacterCreation();
+  });
+
+  // Workshop Listeners
+  workshopBtn.addEventListener('click', () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    workshopMenu.classList.remove('hidden');
+    workshopMenu.classList.add('active');
+    updateWorkshopUI();
+  });
+
+  closeWorkshopBtn.addEventListener('click', () => {
+    workshopMenu.classList.remove('active');
+    workshopMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  function updateWorkshopUI() {
+    workshopXp.innerText = game.stats.totalXP;
+    workshopLevel.innerText = game.stats.playerLevel;
+
+    // Update skills
+    skillNodes.forEach(node => {
+      const skillId = node.id.replace('skill-', '').replace('-btn', '');
+      if (game.stats.hasSkill(skillId)) {
+        node.classList.remove('locked');
+        node.classList.add('unlocked');
+      } else {
+        node.classList.remove('unlocked');
+        const cost = parseInt(node.dataset.cost, 10);
+        if (game.stats.totalXP >= cost) {
+          node.classList.remove('locked');
+        } else {
+          node.classList.add('locked');
+        }
+      }
+    });
+
+    // Update wands
+    wandBtns.forEach(btn => {
+      if (btn.dataset.color === game.stats.wandColor) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  skillNodes.forEach(node => {
+    node.addEventListener('click', () => {
+      const skillId = node.id.replace('skill-', '').replace('-btn', '');
+      if (game.stats.hasSkill(skillId)) return; // Already unlocked
+
+      const cost = parseInt(node.dataset.cost, 10);
+      if (game.stats.spendXP(cost)) {
+        game.stats.unlockSkill(skillId);
+        updateWorkshopUI();
+
+        // Play purchase sound
+        game.audio.playExplosionSound();
+      }
+    });
+  });
+
+  wandBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const color = btn.dataset.color;
+      game.stats.setWandColor(color);
+      updateWorkshopUI();
+    });
+  });
+
   tabBtns.forEach(btn => {
     btn.addEventListener('click', (e) => renderLeaderboard(e.target.dataset.category));
   });
@@ -425,11 +733,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('keydown', (e) => {
     if (scribe.isRunning) {
+      if (e.key === 'Escape') {
+        quitPractice();
+        return;
+      }
+
+      // Stop the event from propagating to the hidden mobile input on Desktop
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (e.preventDefault) e.preventDefault();
+      }
+
       scribe.handleKeyDown(e);
-      if (e.key === ' ') e.preventDefault();
-    }
-    if (e.key === 'Escape' && scribe.isRunning) {
-      quitPractice();
     }
   });
+
+  // ── Mobile Support ────────────────────────────────────────────────────────
+
+  // Ensure mobile keyboard stays open or re-opens if they tap the screen while playing
+  document.addEventListener('touchstart', (e) => {
+    // Only intercept if we are actively playing and NOT touching a UI button
+    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+      // Small timeout helps bypass iOS Safari's aggressive focus blocking
+      setTimeout(() => {
+        mobileInput.focus();
+      }, 50);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+      mobileInput.focus();
+    }
+  });
+
+  // Intercept virtual keyboard input (since 'keydown' is unreliable on Android/iOS)
+  mobileInput.addEventListener('input', (e) => {
+    if (!game.isRunning && !scribe.isRunning) return;
+
+    // e.data contains the character that was just typed
+    const char = e.data;
+    if (char && char.length === 1) {
+      const syntheticEvent = {
+        key: char,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => { }
+      };
+
+      if (game.isRunning) {
+        game.handleKeyDown(syntheticEvent);
+      } else if (scribe.isRunning) {
+        scribe.handleKeyDown(syntheticEvent);
+      }
+    }
+
+    // Clear the input immediately so it's ready for the next letter
+    mobileInput.value = '';
+  });
+
+  // Mobile Ultimate Button
+  const castNovaMobile = (e) => {
+    e.preventDefault(); // prevent double-trigger from click if touchstart fires first
+    if (game.isRunning) {
+      game.castUltimateSpell();
+      // Keep focus on the typing field after casting
+      mobileInput.focus();
+    }
+  };
+
+  mobileNovaBtn.addEventListener('click', castNovaMobile);
+  mobileNovaBtn.addEventListener('touchstart', castNovaMobile);
+
 });

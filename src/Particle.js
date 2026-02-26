@@ -20,20 +20,41 @@ export class Particle {
         this.gravity = 0.0008 + Math.random() * 0.0006;
 
         // Sometimes draw a rune instead of a circle
-        this.isRune = Math.random() > 0.7;
+        this.isRune = Math.random() > 0.7 && !this.isShockwave;
         this.runeChar = String.fromCharCode(0x16A0 + Math.floor(Math.random() * 80)); // Runic block
+
+        // Setup shockwave properties if indicated
+        if (color === 'shockwave') {
+            this.isShockwave = true;
+            this.isRune = false;
+            this.color = 'rgba(255, 215, 0, 0.8)'; // Gold expanding ring
+            this.vx = 0;
+            this.vy = 0;
+            this.gravity = 0;
+            this.life = 1.0;
+            this.decay = 0.04; // Fast fade
+            this.size = 5; // Starting radius
+            this.expansionRate = 12; // How fast the ring grows
+        } else {
+            this.isShockwave = false;
+        }
     }
 
     update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        this.life -= this.decay;
+        if (this.isShockwave) {
+            this.size += this.expansionRate * (dt / 16);
+            this.life -= this.decay * (dt / 16);
+        } else {
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.life -= this.decay;
 
-        // Gravity pulls particles down
-        this.vy += this.gravity * dt;
+            // Gravity pulls particles down
+            this.vy += this.gravity * dt;
 
-        // Shrink as they die
-        this.size = this.initialSize * this.life;
+            // Shrink as they die
+            this.size = this.initialSize * this.life;
+        }
     }
 
     draw(ctx) {
@@ -42,7 +63,15 @@ export class Particle {
         ctx.save();
         ctx.globalAlpha = Math.max(0, this.life);
 
-        if (this.isRune) {
+        if (this.isShockwave) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = Math.max(1, 10 * this.life); // Ring gets thinner as it fades
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+        } else if (this.isRune) {
             ctx.font = `${Math.max(4, this.size * 3)}px serif`;
             ctx.fillStyle = this.color;
             ctx.shadowColor = this.color;

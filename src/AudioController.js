@@ -11,6 +11,9 @@ export class AudioController {
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = 0.5; // Starts at 50%
         this.masterGain.connect(this.ctx.destination);
+
+        // Intensity state
+        this.currentIntensity = 0; // 0.0 to 1.0 based on combo
     }
 
     _resumeContext() {
@@ -162,6 +165,34 @@ export class AudioController {
                 if (this.bgOscillator1) this.bgOscillator1.stop();
                 if (this.bgOscillator2) this.bgOscillator2.stop();
             }, 2100);
+        }
+    }
+
+    setMusicIntensity(intensity) {
+        if (!this.isPlayingBg) return;
+
+        // Clamp intensity 0.0 to 1.0 (e.g. maxes out at 50 combo)
+        this.currentIntensity = Math.min(1.0, Math.max(0, intensity));
+
+        // As intensity increases:
+        // 1. Pitch increases slightly (tension)
+        // 2. Filter opens up (more high frequencies/buzz)
+
+        const t = this.ctx.currentTime;
+        const targetFreq = 55 + (this.currentIntensity * 20); // 55Hz up to 75Hz
+        const targetFilterFreq = 400 + (this.currentIntensity * 1600); // 400 up to 2000Hz (much buzzier)
+
+        if (this.bgOscillator1) {
+            this.bgOscillator1.frequency.linearRampToValueAtTime(targetFreq, t + 0.5);
+        }
+        if (this.bgOscillator2) {
+            this.bgOscillator2.frequency.linearRampToValueAtTime(targetFreq + 0.5, t + 0.5);
+        }
+
+        if (this.bgFilter) {
+            // Cancel previous filter automations except the LFO which is connected to filter.frequency
+            // We just set the base value
+            this.bgFilter.frequency.setTargetAtTime(targetFilterFreq, t, 0.5);
         }
     }
 }

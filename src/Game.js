@@ -115,6 +115,8 @@ export class Game {
         this.currentSpeedMultiplier = settings.speed;
         this.spawnInterval = settings.spawnInt;
 
+        this.blindTimer = 0; // Tracks active Blind spell duration
+
         this.stats.reset();
         this._initStars();
     }
@@ -162,12 +164,21 @@ export class Game {
             this.shakeTimer = Math.max(0, this.shakeTimer - dt);
         }
 
+        // Blind duration decay
+        if (this.blindTimer > 0) {
+            this.blindTimer = Math.max(0, this.blindTimer - dt);
+        }
+
         // Boss Logic
         if (this.isBossPhase && this.boss) {
             this.boss.update(dt);
 
             if (this.boss.shouldAttack()) {
                 this.spawnBossAttack();
+            }
+
+            if (this.boss.shouldCastSpell()) {
+                this.castBossSpell();
             }
 
             // Wait for death animation to fully finish before ending phase
@@ -204,6 +215,10 @@ export class Game {
                     this.audio.playShatter();
                     this.spawnExplosion(word.x, word.y, { particles: [hitColor, '#ffffff'] });
                     this._triggerShake(5, 200);
+
+                    // Drop combo on taking damage
+                    this.stats.combo = 0;
+                    this.stats.updateHUD();
 
                     const isDead = this.stats.loseLife();
                     if (isDead) {
@@ -264,8 +279,24 @@ export class Game {
         this.ctx.save();
         this.ctx.translate(shakeX, shakeY);
 
+        // --- Dynamic Background based on Combo ---
+        // Combo 0-20: Normal
+        // Combo 20-50+: Red/Violet vignette and faster starfield
+        const comboIntensity = Math.min(1.0, this.stats.combo / 50);
+
+        if (comboIntensity > 0.1) {
+            const bgVignette = this.ctx.createRadialGradient(
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.4,
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width
+            );
+            bgVignette.addColorStop(0, 'transparent');
+            bgVignette.addColorStop(1, `rgba(100, 0, 80, ${comboIntensity * 0.6})`);
+            this.ctx.fillStyle = bgVignette;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+
         // --- Star field ---
-        this._drawStars();
+        this._drawStars(comboIntensity);
 
         // --- Pocket Dimension Background ---
         if (this.bossDimensionAlpha > 0) {
@@ -339,8 +370,8 @@ export class Game {
         const gemGlow = 12 + Math.sin(performance.now() / 300) * 8;
         this.ctx.beginPath();
         this.ctx.arc(0, -42, 6, 0, Math.PI * 2);
-        this.ctx.fillStyle = '#ff00ff';
-        this.ctx.shadowColor = '#ff00ff';
+        this.ctx.fillStyle = this.stats.wandColor;
+        this.ctx.shadowColor = this.stats.wandColor;
         this.ctx.shadowBlur = gemGlow;
         this.ctx.fill();
 
@@ -390,19 +421,59 @@ export class Game {
         // --- Particles ---
         this.particles.forEach(p => p.draw(this.ctx));
 
+        // --- Blind Overlay ---
+        if (this.blindTimer > 0) {
+            this.ctx.save();
+            // Calculate a dark pulsing alpha based on remaining time
+            const blindAlpha = Math.min(0.95, this.blindTimer / 500) * (0.85 + Math.sin(performance.now() / 300) * 0.1);
+
+            // Create a radial gradient that is clear perfectly around the wizard
+            // and pitch black everywhere else
+            const blindGradient = this.ctx.createRadialGradient(
+                wizX, wizY - 30, 40, // clear inner circle around wizard
+                wizX, wizY - 30, 250 // edge of darkness
+            );
+
+            blindGradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Transparent at center
+            blindGradient.addColorStop(0.5, `rgba(10, 0, 20, ${blindAlpha * 0.8})`);
+            blindGradient.addColorStop(1, `rgba(0, 0, 0, ${blindAlpha})`); // Opaque black outside
+
+            this.ctx.fillStyle = blindGradient;
+            this.ctx.fillRect(-shakeX, -shakeY, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
+        }
+
         this.ctx.restore(); // Restore from screen shake translate
     }
 
-    _drawStars() {
+    _drawStars(comboIntensity = 0) {
         const now = performance.now();
         this.ctx.save();
         this.stars.forEach(star => {
-            const twinkle = star.brightness + Math.sin((now / star.speed) + star.phase) * 0.25;
+            // Stars twinkle and move faster at high combo
+            const speedMod = 1 + (comboIntensity * 2);
+            const twinkle = star.brightness + Math.sin((now / (star.speed / speedMod)) + star.phase) * 0.25;
+
+            // Move stars slowly downwards to give a feeling of forward momentum
+            star.y += (1 + comboIntensity * 5) * 0.2;
+            if (star.y > this.canvas.height) {
+                star.y = 0;
+                star.x = Math.random() * this.canvas.width;
+            }
+
             const alpha = Math.max(0.05, Math.min(1, twinkle));
             this.ctx.globalAlpha = alpha;
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.shadowColor = '#aaaaff';
-            this.ctx.shadowBlur = star.size * 2;
+
+            // Stars shift from white to slight reddish/purple at max combo
+            if (comboIntensity > 0.5) {
+                this.ctx.fillStyle = '#ffccdd';
+                this.ctx.shadowColor = '#ff2266';
+            } else {
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.shadowColor = '#aaaaff';
+            }
+
+            this.ctx.shadowBlur = star.size * 2 + (comboIntensity * 4);
             this.ctx.beginPath();
             this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
             this.ctx.fill();
@@ -422,8 +493,35 @@ export class Game {
             return;
         }
 
+        // Swarm chance: 5% (spawns 3-5 very short words at once)
+        if (Math.random() < 0.05) {
+            const numSwarm = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numSwarm; i++) {
+                // Find a short word manually, or just use easy dict
+                let text = this.dictionary.getRandomWord('easy');
+                // Ensure it's very short for a swarm
+                while (text.length > 4) text = this.dictionary.getRandomWord('easy');
+
+                const sx = targetX + (Math.random() - 0.5) * 400;
+                const sy = -100 - Math.random() * 100;
+                const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, sx, targetY, { variant: 'swarm' });
+                // Override spawn position manually
+                newWord.x = sx;
+                newWord.y = sy;
+                this.words.push(newWord);
+            }
+            return;
+        }
+
         const text = this.dictionary.getWordForDifficulty(this.difficulty);
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY);
+
+        // 10% chance for Armored, 10% chance for Ghost
+        let variant = 'normal';
+        const rand = Math.random();
+        if (rand < 0.1) variant = 'armored';
+        else if (rand < 0.2) variant = 'ghost';
+
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant });
         this.words.push(newWord);
     }
 
@@ -445,8 +543,17 @@ export class Game {
         const targetX = this.canvas.width / 2;
         const targetY = this.canvas.height;
 
-        const magicBullet = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, true);
+        const magicBullet = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { isBossAttack: true });
         this.words.push(magicBullet);
+    }
+
+    castBossSpell() {
+        // Currently only Blind is implemented. Can add curses here later!
+        this.blindTimer = 4000; // 4 seconds of darkness
+
+        // Visual indication that Boss casted a spell
+        this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#8a2be2', '#4b0082', '#000000'] });
+        this.audio.playExplosion();
     }
 
     endBossPhase() {
@@ -461,7 +568,26 @@ export class Game {
 
     handleKeyDown(e) {
         if (!this.isRunning) return;
+
+        // Check for Ultimate Spell (Tab key)
+        if (e.key === 'Tab') {
+            if (e.preventDefault) e.preventDefault(); // Prevent focus switching
+            this.castUltimateSpell();
+            return;
+        }
+
         if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return;
+
+        // Ignore Spacebar so players don't accidentally break combo after finishing a word
+        if (e.key === ' ') {
+            if (e.preventDefault) e.preventDefault();
+            return;
+        }
+
+        // Extremely important: prevent default to stop Desktop browsers from 
+        // also typing this letter into the hidden `mobileInput`, which would 
+        // cause a synthetic double-fire event!
+        if (e.preventDefault) e.preventDefault();
 
         const letter = e.key.toLowerCase();
 
@@ -476,6 +602,7 @@ export class Game {
                 this.processKeystroke(this.targetedWord, letter);
             } else {
                 this.stats.recordStroke(false);
+                this.stats.updateHUD(); // Ensure combo break is visible
             }
         }
     }
@@ -488,7 +615,7 @@ export class Game {
             this.audio.playMagicSpark();
 
             // Spark at typed position
-            this.ctx.font = 'bold 32px Cinzel';
+            this.ctx.font = 'bold 32px Cinzel, serif';
             const fullWidth = this.ctx.measureText(word.text).width;
             const typedWidth = this.ctx.measureText(word.typed).width;
             const textXOffset = -35;
@@ -502,9 +629,11 @@ export class Game {
                 word.dying = true; // Let the animation play instead of instant splice
                 this.audio.playExplosion();
 
-                this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors);
+                // Increase explosion size based on combo
+                const comboBonus = Math.min(this.stats.combo, 50) / 50;
+                this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors, comboBonus);
                 this.playerAnimTimer = 200;
-                this._triggerShake(4, 150);
+                this._triggerShake(4 + comboBonus * 4, 150 + comboBonus * 100);
 
                 // Fire counter-attack projectile at boss
                 if (this.isBossPhase && this.boss && !this.boss.isDead && word.isBossAttack) {
@@ -520,17 +649,80 @@ export class Game {
             }
         } else {
             this.stats.recordStroke(false);
+
+            // Armored words reset on typo!
+            if (word.variant === 'armored' && word.typed.length > 0) {
+                word.untyped = word.typed + word.untyped;
+                word.typed = "";
+                word.isTargeted = false;
+                this.targetedWord = null;
+                this.audio.playShatter();
+
+                // Visual feedback for armor regenerating
+                this.ctx.font = 'bold 32px Cinzel, serif';
+                const sparkX = word.x - this.ctx.measureText(word.text).width / 2 * word.scale;
+                this.spawnHitSpark(sparkX, word.y, word.elementColors);
+            }
         }
 
         this.stats.updateHUD();
+
+        // Update audio intensity based on combo (0.0 to 1.0, maxing at 50 combo)
+        this.audio.setMusicIntensity(this.stats.combo / 50);
     }
 
-    spawnExplosion(x, y, elementColors) {
+    castUltimateSpell() {
+        if (!this.stats.useMana(100)) return;
+
+        this.audio.playExplosion();
+        this._triggerShake(15, 600);
+
+        // Flash screen
+        this.ctx.fillStyle = 'rgba(0, 229, 255, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Spawn massive center explosion
+        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 3.0);
+
+        // Destroy all normal words
+        for (let i = this.words.length - 1; i >= 0; i--) {
+            const word = this.words[i];
+
+            // Skip if dying or is a boss attack
+            if (word.dying || word.isBossAttack) continue;
+
+            this.stats.addScore(word.text.length, false);
+            word.dying = true;
+            this.spawnExplosion(word.x, word.y, word.elementColors, 0.5);
+
+            if (word === this.targetedWord) {
+                this.targetedWord = null;
+            }
+        }
+
+        // Damage Boss heavily
+        if (this.isBossPhase && this.boss && !this.boss.isDead) {
+            for (let i = 0; i < 3; i++) {
+                this.boss.takeDamage();
+            }
+        }
+    }
+
+    spawnExplosion(x, y, elementColors, bonusMultiplier = 0) {
         const colors = elementColors.particles;
-        const numParticles = 35 + Math.random() * 20; // More energetic burst
+        let numParticles = 35 + Math.random() * 20; // More energetic burst
+        numParticles *= (1 + bonusMultiplier);
+
         for (let i = 0; i < numParticles; i++) {
             const color = colors[Math.floor(Math.random() * colors.length)];
-            this.particles.push(new Particle(x, y, color));
+            const particle = new Particle(x, y, color);
+
+            if (bonusMultiplier > 0) {
+                particle.speed *= (1 + bonusMultiplier * 0.5);
+                particle.size *= (1 + bonusMultiplier * 0.5);
+            }
+
+            this.particles.push(particle);
         }
     }
 

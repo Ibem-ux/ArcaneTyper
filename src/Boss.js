@@ -42,6 +42,10 @@ export class Boss {
         // Attack logic
         this.attackTimer = 0;
 
+        // Spell logic
+        this.spellTimer = 0;
+        this.spellInterval = 8000; // Cast a defensive spell every 8 seconds
+
         // Attack speed scales faster as you beat more bosses (up to a 50% cap)
         const speedMultiplier = Math.max(0.5, 1 - (difficultyScale * 0.1));
         this.attackInterval = config.speed * speedMultiplier;
@@ -77,6 +81,7 @@ export class Boss {
         }
 
         this.attackTimer += dt;
+        this.spellTimer += dt;
     }
 
     takeDamage() {
@@ -91,6 +96,14 @@ export class Boss {
     shouldAttack() {
         if (this.introFinished && !this.isDead && this.attackTimer >= this.attackInterval) {
             this.attackTimer = 0;
+            return true;
+        }
+        return false;
+    }
+
+    shouldCastSpell() {
+        if (this.introFinished && !this.isDead && this.spellTimer >= this.spellInterval) {
+            this.spellTimer = 0;
             return true;
         }
         return false;
