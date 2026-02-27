@@ -549,7 +549,8 @@ export class Game {
 
     castBossSpell() {
         // Currently only Blind is implemented. Can add curses here later!
-        this.blindTimer = 4000; // 4 seconds of darkness
+        const blindDuration = this.stats.hasSkill('vision') ? 2000 : 4000;
+        this.blindTimer = blindDuration; // 2s or 4s of darkness
 
         // Visual indication that Boss casted a spell
         this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#8a2be2', '#4b0082', '#000000'] });
@@ -673,6 +674,15 @@ export class Game {
 
     castUltimateSpell() {
         if (!this.stats.useMana(100)) return;
+
+        // Mana Overflow Skill: Ultimate restores 1 Barrier
+        if (this.stats.hasSkill('burst')) {
+            const maxAllowedLives = this.stats.hasSkill('life') ? 5 : 4;
+            if (this.stats.lives < maxAllowedLives) {
+                this.stats.lives++;
+                this.stats.updateLivesDisplay();
+            }
+        }
 
         this.audio.playExplosion();
         this._triggerShake(15, 600);

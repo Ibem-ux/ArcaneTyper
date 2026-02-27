@@ -3,6 +3,7 @@ import { Game } from './Game.js';
 import { Leaderboard } from './Leaderboard.js';
 import { Scribe } from './Scribe.js';
 import { supabase } from './supabaseClient.js';
+import { Duel } from './Duel.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Ultra-strict font preloader for Canvas
@@ -28,6 +29,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   const leaderboardMenu = document.getElementById('leaderboard-menu');
   const practiceUi = document.getElementById('practice-ui');
   const workshopMenu = document.getElementById('workshop-menu');
+
+  // Duel UI
+  const duelLobbyMenu = document.getElementById('duel-lobby-menu');
+  const duelLobbyIdlePanel = document.getElementById('duel-lobby-idle');
+  const duelLobbyWaitingPanel = document.getElementById('duel-lobby-waiting');
+  const duelHud = document.getElementById('duel-hud');
+  const duelResultMenu = document.getElementById('duel-result-menu');
+  const duelRoomInput = document.getElementById('duel-room-input');
+  const duelRoomCodeDisplay = document.getElementById('duel-room-code-display');
+  const duelLobbyError = document.getElementById('duel-lobby-error');
+  const duelOppName = document.getElementById('duel-opp-name');
+  const duelOppScore = document.getElementById('duel-opp-score');
+  const duelOppWpm = document.getElementById('duel-opp-wpm');
+  const duelOppBarriers = document.getElementById('duel-opp-barriers');
+  const duelTimerDisplay = document.getElementById('duel-timer-display');
+  const duelResultTitle = document.getElementById('duel-result-title');
+  const duelResultSubtitle = document.getElementById('duel-result-subtitle');
+  const duelResMyScore = document.getElementById('duel-res-my-score');
+  const duelResOppScore = document.getElementById('duel-res-opp-score');
 
   // Menu Stats
   const menuBestScore = document.getElementById('menu-best-score');
@@ -112,6 +132,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let pendingStats = null;
   let pendingScribeStats = null;
+
+  // Duel State
+  let duel = null;
+  let duelBroadcastInterval = null;
+  let duelTimerInterval = null;
+  let duelSecondsLeft = 90;
+  let duelOpponentLastState = null;
+  let duelActive = false;
 
   // ── Authentication & Initialization ───────────────────────────────────────
 
@@ -746,6 +774,220 @@ document.addEventListener('DOMContentLoaded', async () => {
     workshopMenu.classList.add('hidden');
     startMenu.classList.remove('hidden');
     startMenu.classList.add('active');
+  });
+
+  // ── Mage Duels ─────────────────────────────────────────────────────────────
+
+  function openDuelLobby() {
+    startMenu.style.pointerEvents = 'none';
+    startMenu.style.opacity = '0.5';
+    startMenu.style.filter = 'blur(4px)';
+
+    duelLobbyMenu.classList.remove('hidden');
+    // Using a setTimeout allows display: flex to apply before we trigger the CSS transition
+    setTimeout(() => {
+      duelLobbyMenu.classList.add('active');
+    }, 10);
+
+    duelLobbyIdlePanel.style.display = 'flex';
+    duelLobbyWaitingPanel.style.display = 'none';
+    duelLobbyError.innerText = '';
+  }
+
+  function closeDuelLobby() {
+    if (duel) { duel.disconnect(); duel = null; }
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '1';
+    startMenu.style.filter = 'none';
+
+    duelLobbyMenu.classList.remove('active');
+    // Wait for slide out animation
+    setTimeout(() => {
+      duelLobbyMenu.classList.add('hidden');
+    }, 500);
+  }
+
+  function startDuel(opponentName) {
+    duelActive = true;
+    duelSecondsLeft = 90;
+    duelOpponentLastState = null;
+
+    // Close lobby, show game HUD
+    duelLobbyMenu.classList.remove('active');
+    duelLobbyMenu.classList.add('hidden');
+    duelHud.classList.remove('hidden');
+    duelOppName.innerText = opponentName;
+
+    // Override game over: in duel mode, declare the local player lost
+    game.onGameOver = () => endDuel(false);
+
+    // Start the underlying game in Normal difficulty
+    game.start(difficultySelect.value || 'normal');
+    hud.classList.remove('hidden');
+
+    // Broadcast loop: send local state every 500ms
+    duelBroadcastInterval = setInterval(() => {
+      if (!duelActive || !duel) return;
+      duel.broadcast({
+        score: game.stats.score,
+        wpm: game.stats.getWPM(),
+        barriers: game.stats.lives,
+        status: 'alive'
+      });
+    }, 500);
+
+    // Countdown timer
+    updateDuelTimerDisplay();
+    duelTimerInterval = setInterval(() => {
+      duelSecondsLeft--;
+      updateDuelTimerDisplay();
+      if (duelSecondsLeft <= 0) {
+        clearInterval(duelTimerInterval);
+        // Time's up — whoever has the highest score wins
+        const myScore = game.stats.score;
+        const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
+        endDuel(myScore >= oppScore);
+      }
+    }, 1000);
+  }
+
+  function updateDuelTimerDisplay() {
+    const m = Math.floor(duelSecondsLeft / 60);
+    const s = duelSecondsLeft % 60;
+    duelTimerDisplay.innerText = `${m}:${s.toString().padStart(2, '0')}`;
+    duelTimerDisplay.style.color = duelSecondsLeft <= 15 ? '#ff4b4b' : '#29b6f6';
+  }
+
+  function endDuel(isWinner) {
+    if (!duelActive) return;
+    duelActive = false;
+
+    clearInterval(duelBroadcastInterval);
+    clearInterval(duelTimerInterval);
+
+    // Stop underlying game if still running
+    if (game.isRunning) game.stop();
+
+    // Broadcast defeat/victory to opponent
+    if (duel) {
+      duel.broadcast({ status: isWinner ? 'won' : 'dead', score: game.stats.score });
+      duel.disconnect();
+      duel = null;
+    }
+
+    // Hide game UI
+    hud.classList.add('hidden');
+    duelHud.classList.add('hidden');
+
+    // Show result screen
+    const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
+    duelResMyScore.innerText = game.stats.score;
+    duelResOppScore.innerText = oppScore;
+
+    if (isWinner) {
+      duelResultTitle.innerText = '⚔️ VICTORY!';
+      duelResultTitle.style.color = '#ffd700';
+      duelResultSubtitle.innerText = 'You have vanquished your foe!';
+    } else {
+      duelResultTitle.innerText = '💀 DEFEATED';
+      duelResultTitle.style.color = '#ff4b4b';
+      duelResultSubtitle.innerText = 'Your barriers have crumbled...';
+    }
+
+    duelResultMenu.classList.remove('hidden');
+    duelResultMenu.classList.add('active');
+  }
+
+  // Duel button on Start Menu
+  document.getElementById('duel-mage').addEventListener('click', () => {
+    if (!supabase) {
+      alert('Mage Duels require a Supabase connection. Please configure your environment variables.');
+      return;
+    }
+    openDuelLobby();
+  });
+
+  // Close lobby
+  document.getElementById('duel-lobby-close-btn').addEventListener('click', closeDuelLobby);
+
+  // Create room
+  document.getElementById('duel-create-btn').addEventListener('click', async () => {
+    if (!game.stats.mageName) {
+      duelLobbyError.innerText = 'You must be logged in to create a duel.';
+      return;
+    }
+    duelLobbyError.innerText = '';
+    duel = new Duel(supabase, game.stats.mageName);
+
+    duel.onOpponentJoined = () => {
+      // Read opponent name from the presence state at the moment they join
+      const state = duel.channel.presenceState();
+      const opponentKey = Object.keys(state).find(k => k !== game.stats.mageName);
+      startDuel(opponentKey || 'Unknown Mage');
+    };
+
+    duel.onOpponentUpdate = (state) => {
+      duelOpponentLastState = state;
+      duelOppScore.innerText = state.score ?? 0;
+      duelOppWpm.innerText = state.wpm ?? 0;
+      duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.status === 'dead') endDuel(true);
+    };
+
+    const code = await duel.create();
+    duelRoomCodeDisplay.innerText = code;
+    duelLobbyIdlePanel.style.display = 'none';
+    duelLobbyWaitingPanel.style.display = 'flex';
+  });
+
+  // Join room
+  document.getElementById('duel-join-btn').addEventListener('click', async () => {
+    const code = duelRoomInput.value.trim().toUpperCase();
+    if (code.length < 6) {
+      duelLobbyError.innerText = 'Please enter a valid 6-character room code.';
+      return;
+    }
+    if (!game.stats.mageName) {
+      duelLobbyError.innerText = 'You must be logged in to join a duel.';
+      return;
+    }
+    duelLobbyError.innerText = 'Joining room ' + code + '...';
+    duel = new Duel(supabase, game.stats.mageName);
+
+    duel.onOpponentUpdate = (state) => {
+      duelOpponentLastState = state;
+      duelOppScore.innerText = state.score ?? 0;
+      duelOppWpm.innerText = state.wpm ?? 0;
+      duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.status === 'dead') endDuel(true);
+    };
+
+    duel.onOpponentLeft = () => {
+      if (duelActive) endDuel(true); // If opponent disconnects, local player wins
+    };
+
+    await duel.join(code);
+    duelLobbyError.innerText = '';
+    // Get host's name from presence
+    const presenceState = duel.channel.presenceState();
+    const hostKey = Object.keys(presenceState).find(k => k !== game.stats.mageName);
+    startDuel(hostKey || 'Unknown Mage');
+  });
+
+  // Rematch — re-open lobby
+  document.getElementById('duel-rematch-btn').addEventListener('click', () => {
+    duelResultMenu.classList.remove('active');
+    duelResultMenu.classList.add('hidden');
+    openDuelLobby();
+  });
+
+  // Return to Library from result screen
+  document.getElementById('duel-result-close-btn').addEventListener('click', () => {
+    duelResultMenu.classList.remove('active');
+    duelResultMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+    updateMenuStats();
   });
 
   function updateWorkshopUI() {

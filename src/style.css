@@ -251,6 +251,8 @@ body {
   background: rgba(15, 10, 20, 0.88);
   backdrop-filter: blur(10px);
   z-index: 20;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 0.5s ease;
 }
 
@@ -262,6 +264,27 @@ body {
 .overlay-menu.active {
   opacity: 1;
   pointer-events: all;
+}
+
+/* ── Specific override for Duel Lobby to be a side-panel ── */
+#duel-lobby-menu {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: 45vw;
+  max-width: 500px;
+  min-width: 350px;
+  background: rgba(10, 5, 20, 0.95);
+  border-left: 1px solid rgba(41, 182, 246, 0.3);
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.9);
+  /* Add a slide-in animation along with the opacity fade */
+  transform: translateX(100%);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+#duel-lobby-menu.active {
+  transform: translateX(0);
 }
 
 h1 {
@@ -642,6 +665,66 @@ h1 .highlight {
   mix-blend-mode: screen;
 }
 
+/* ── Duel Opponent Silhouette (Start Menu Right Side) ── */
+.duel-avatar-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all 0.5s ease;
+  overflow: hidden;
+}
+
+.duel-avatar-background:hover {
+  filter: brightness(1.2);
+}
+
+.duel-avatar-background:active {
+  transform: scale(0.98);
+}
+
+.duel-silhouette-img {
+  position: absolute;
+  top: 50%;
+  /* Center vertically */
+  right: 5vw;
+  /* Push slightly in from the right edge */
+  height: 55vh;
+  /* Scale down to look like it's in the background */
+  max-height: 600px;
+  width: max-content;
+  opacity: 0.8;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform-origin: center right;
+  transform: translateY(-50%);
+  /* Adjust for top: 50% perfect centering */
+}
+
+.duel-silhouette-img img {
+  height: 100%;
+  width: auto;
+  display: block;
+  clip-path: inset(2px 2px 2px 2px);
+}
+
+.duel-avatar-background:hover .duel-silhouette-img {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.05);
+  filter: brightness(1.5);
+}
+
+.duel-wand-glow-img {
+  display: none;
+  /* Hide glow since the new image is a tower without a wand */
+}
+
 @keyframes floatWandImage {
 
   0%,
@@ -1002,5 +1085,30 @@ h2 {
 @media (min-width: 769px) {
   #mobile-nova-btn {
     display: none !important;
+  }
+}
+
+/* ── Mage Duel Animations ── */
+@keyframes spin {
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes spinReverse {
+  100% {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+@keyframes pulseOpacity {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
   }
 }

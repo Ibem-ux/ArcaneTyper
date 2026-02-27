@@ -91,12 +91,11 @@
             FAME</button>
         </div>
 
-        <!-- Background Silhouette Image -->
+        <!-- Background Silhouette Image (Player) -->
         <div id="background-mage" class="mage-avatar-background">
           <!-- SVG Filter for Image Processing -->
           <svg width="0" height="0" style="position:absolute;">
             <filter id="mage-stencil" color-interpolation-filters="sRGB">
-              <!-- Convert luminance to alpha (inverted) -->
               <feColorMatrix type="matrix" values="
                 0 0 0 0 0
                 0 0 0 0 0
@@ -104,7 +103,6 @@
                 -0.333 -0.333 -0.333 0 1" result="mask" />
               <!-- Flood with dark purple -->
               <feFlood flood-color="#3a2b58" result="color" />
-              <!-- Mask the color -->
               <feComposite in="color" in2="mask" operator="in" />
             </filter>
           </svg>
@@ -114,10 +112,24 @@
             <div class="mage-wand-glow-img" id="avatar-wand-glow"></div>
           </div>
         </div>
+
+        <!-- Background Silhouette Image (Duel Opponent) -->
+        <div id="duel-mage" class="duel-avatar-background" title="Enter The Arena (Mage Duels)">
+          <div class="duel-silhouette-img">
+            <img src="/duel-mage-bg-clean.png" alt="Duel Opponent Silhouette" />
+            <!-- Red/Orange Glow for the antagonist -->
+            <div class="duel-wand-glow-img"
+              style="background: #ff4b4b; box-shadow: 0 0 50px 20px rgba(255, 75, 75, 0.6);"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Game Over Menu -->
       <div id="game-over-menu" class="overlay-menu hidden">
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- DUEL LOBBY MENU                                         -->
+        <!-- ═══════════════════════════════════════════════════════ -->
         <h2>SPELLBROKEN</h2>
         <div class="final-stats">
           <div class="stat-row"><span>Final Mastery:</span> <span id="go-score">0</span></div>
@@ -180,8 +192,177 @@
         <button id="close-leaderboard-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
       </div>
 
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- DUEL LOBBY MENU                                         -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div id="duel-lobby-menu" class="overlay-menu hidden">
+        <h2
+          style="color: #29b6f6; text-shadow: 0 0 20px rgba(41,182,246,0.6); font-size: clamp(2rem, 5vh, 3.5rem); letter-spacing: 5px; margin-bottom: 0.5rem;">
+          ⚔️ THE ARENA</h2>
+        <p
+          style="color: #b892b0; font-size: clamp(0.7rem, 2vh, 1rem); letter-spacing: 4px; margin-bottom: 2rem; text-shadow: 0 0 10px rgba(184,146,176,0.4);">
+          CHALLENGE ANOTHER MAGE IN REAL-TIME</p>
+
+        <div id="duel-lobby-idle"
+          style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%; max-width: 400px; background: rgba(10, 5, 20, 0.7); padding: clamp(20px, 4vh, 40px); border-radius: 15px; border: 1px solid rgba(41, 182, 246, 0.3); box-shadow: 0 0 30px rgba(41, 182, 246, 0.2); backdrop-filter: blur(15px);">
+
+          <div style="width: 100%; text-align: center;">
+            <p style="color: #29b6f6; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px; font-weight: bold;">
+              HOST A DUEL</p>
+            <button id="duel-create-btn" class="primary-btn"
+              style="width: 100%; font-size: 1.1rem; padding: 12px; border-color: #29b6f6; background: linear-gradient(45deg, #0b1a2b, #1a3a5c); box-shadow: 0 0 15px rgba(41,182,246,0.4);">CREATE
+              ROOM</button>
+          </div>
+
+          <div
+            style="width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(41, 182, 246, 0.5), transparent); margin: 5px 0;">
+          </div>
+
+          <div style="width: 100%; text-align: center;">
+            <p style="color: #d500f9; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px; font-weight: bold;">
+              JOIN A DUEL</p>
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; width: 100%;">
+              <input id="duel-room-input" type="text" placeholder="ENTER CODE" maxlength="6"
+                style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid #d500f9; color: #fff; border-radius: 6px; padding: 12px; font-family: inherit; font-size: 1.1rem; letter-spacing: 5px; text-transform: uppercase; text-align: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); outline: none; transition: box-shadow 0.3s;"
+                onfocus="this.style.boxShadow='0 0 15px rgba(213,0,249,0.5), inset 0 0 10px rgba(0,0,0,0.8)'"
+                onblur="this.style.boxShadow='inset 0 0 10px rgba(0,0,0,0.8)'" />
+              <button id="duel-join-btn" class="primary-btn"
+                style="width: 100%; border-color: #d500f9; background: linear-gradient(45deg, #1b0a2a, #3a155c); padding: 10px 20px; font-size: 1rem; box-shadow: 0 0 15px rgba(213,0,249,0.3);">JOIN
+                ROOM</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Waiting state (shown after creating) -->
+        <div id="duel-lobby-waiting"
+          style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; background: rgba(10, 5, 20, 0.6); padding: clamp(30px, 5vh, 50px); border-radius: 15px; border: 1px solid rgba(41, 182, 246, 0.5); box-shadow: 0 0 40px rgba(41, 182, 246, 0.2); backdrop-filter: blur(10px); position: relative; overflow: hidden;">
+          <!-- Spinning magic circle behind code -->
+          <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; border: 2px dashed rgba(41,182,246,0.3); border-radius: 50%; animation: spin 10s linear infinite; pointer-events: none;">
+          </div>
+          <div
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 1px solid rgba(213,0,249,0.2); border-radius: 50%; animation: spinReverse 15s linear infinite; pointer-events: none;">
+          </div>
+
+          <p style="color: #b892b0; font-size: 1rem; letter-spacing: 4px; z-index: 2;">YOUR ROOM CODE</p>
+          <p id="duel-room-code-display"
+            style="font-size: 4rem; font-weight: 900; color: #fff; text-shadow: 0 0 30px rgba(41,182,246,1), 0 0 10px #fff; letter-spacing: 12px; z-index: 2; margin: 10px 0;">
+          </p>
+          <p
+            style="color: #29b6f6; font-size: 1rem; animation: pulseOpacity 1.5s infinite; z-index: 2; letter-spacing: 2px;">
+            Awaiting challenger...</p>
+          <p id="duel-error-msg" style="color: #ff4b4b; font-size: 0.9rem; min-height: 1rem; z-index: 2;"></p>
+        </div>
+
+        <p id="duel-lobby-error"
+          style="color: #ff4b4b; font-size: 0.9rem; font-weight: bold; min-height: 1rem; margin-top: 1rem; text-shadow: 0 0 10px rgba(255, 75, 75, 0.5);">
+        </p>
+        <button id="duel-lobby-close-btn" class="primary-btn"
+          style="margin-top: 1rem; background: transparent; border-color: var(--text-muted); color: var(--text-muted); font-size: 0.9rem; padding: 8px 25px;">RETURN
+          TO LIBRARY</button>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- DUEL OPPONENT HUD (Overlay during game)                 -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div id="duel-hud" class="hidden"
+        style="position: absolute; top: 80px; right: 20px; z-index: 50; pointer-events: none;">
+        <div
+          style="background: linear-gradient(135deg, rgba(10,5,20,0.85), rgba(20,10,40,0.85)); border: 2px solid rgba(41,182,246,0.5); border-radius: 12px; padding: 15px 20px; min-width: 200px; backdrop-filter: blur(10px); box-shadow: 0 0 25px rgba(41,182,246,0.2), inset 0 0 15px rgba(41,182,246,0.1);">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(41,182,246,0.3); padding-bottom: 8px;">
+            <p
+              style="color: #29b6f6; font-size: 0.75rem; letter-spacing: 3px; margin: 0; text-shadow: 0 0 10px rgba(41,182,246,0.8); font-weight: bold;">
+              ⚔ OPPONENT</p>
+            <p id="duel-opp-name"
+              style="color: #fff; font-size: 0.85rem; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
+              ---</p>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 10px;">
+            <div style="text-align: center; flex: 1;">
+              <div style="color: #b892b0; font-size: 0.65rem; letter-spacing: 1px; margin-bottom: 4px;">SCORE</div>
+              <div id="duel-opp-score"
+                style="color: #ffd700; font-size: 1.2rem; font-weight: 900; text-shadow: 0 0 10px rgba(255,215,0,0.4);">
+                0</div>
+            </div>
+            <div style="width: 1px; background: rgba(41,182,246,0.2);"></div>
+            <div style="text-align: center; flex: 1;">
+              <div style="color: #b892b0; font-size: 0.65rem; letter-spacing: 1px; margin-bottom: 4px;">WPM</div>
+              <div id="duel-opp-wpm"
+                style="color: #29b6f6; font-size: 1.2rem; font-weight: 900; text-shadow: 0 0 10px rgba(41,182,246,0.4);">
+                0</div>
+            </div>
+            <div style="width: 1px; background: rgba(41,182,246,0.2);"></div>
+            <div style="text-align: center; flex: 1;">
+              <div style="color: #b892b0; font-size: 0.65rem; letter-spacing: 1px; margin-bottom: 4px;">LIVES</div>
+              <div id="duel-opp-barriers"
+                style="color: #d500f9; font-size: 1.2rem; font-weight: 900; text-shadow: 0 0 10px rgba(213,0,249,0.4);">
+                4</div>
+            </div>
+          </div>
+          <div id="duel-timer-box"
+            style="margin-top: 12px; text-align: center; background: rgba(0,0,0,0.5); border-radius: 6px; padding: 8px; border: 1px solid rgba(41,182,246,0.2);">
+            <div style="color: #b892b0; font-size: 0.65rem; letter-spacing: 2px; margin-bottom: 2px;">TIME REMAINING
+            </div>
+            <div id="duel-timer-display"
+              style="color: #29b6f6; font-size: 1.4rem; font-weight: 900; text-shadow: 0 0 15px rgba(41,182,246,0.5); font-family: monospace;">
+              1:30</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- DUEL RESULT SCREEN                                      -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div id="duel-result-menu" class="overlay-menu hidden">
+        <div
+          style="background: radial-gradient(circle at center, rgba(30,15,50,0.9) 0%, rgba(10,5,20,0.95) 100%); padding: clamp(30px, 5vh, 50px) clamp(40px, 6vw, 80px); border-radius: 20px; border: 2px solid rgba(41,182,246,0.4); box-shadow: 0 0 50px rgba(41,182,246,0.2), inset 0 0 30px rgba(41,182,246,0.1); text-align: center; backdrop-filter: blur(15px); display: flex; flex-direction: column; align-items: center;">
+          <h2 id="duel-result-title"
+            style="font-size: clamp(2.5rem, 6vh, 4rem); margin-bottom: 0.5rem; text-shadow: 0 0 30px currentColor; letter-spacing: 8px;">
+            VICTORY!</h2>
+          <p id="duel-result-subtitle"
+            style="color: #b892b0; font-size: clamp(0.9rem, 2vh, 1.2rem); letter-spacing: 5px; margin-bottom: 2rem; text-transform: uppercase;">
+            You have vanquished your foe!</p>
+
+          <div
+            style="display: flex; gap: clamp(1rem, 4vw, 4rem); margin-bottom: 2.5rem; align-items: center; background: rgba(0,0,0,0.4); padding: clamp(15px, 3vh, 30px) clamp(20px, 4vw, 50px); border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="text-align: center; min-width: 100px;">
+              <p
+                style="color: #29b6f6; font-size: 0.85rem; letter-spacing: 3px; margin-bottom: 10px; font-weight: bold;">
+                YOU</p>
+              <p id="duel-res-my-score"
+                style="font-size: clamp(2rem, 5vh, 3rem); font-weight: 900; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.5);">
+                0</p>
+            </div>
+
+            <div
+              style="text-align: center; color: #b892b0; font-size: clamp(1.5rem, 4vh, 2rem); font-weight: bold; text-shadow: 0 0 10px rgba(184,146,176,0.5); opacity: 0.7;">
+              VS
+            </div>
+
+            <div style="text-align: center; min-width: 100px;">
+              <p
+                style="color: #d500f9; font-size: 0.85rem; letter-spacing: 3px; margin-bottom: 10px; font-weight: bold;">
+                OPPONENT</p>
+              <p id="duel-res-opp-score"
+                style="font-size: clamp(2rem, 5vh, 3rem); font-weight: 900; color: #ff4b4b; text-shadow: 0 0 20px rgba(255,75,75,0.5);">
+                0</p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+            <button id="duel-rematch-btn" class="primary-btn"
+              style="border-color: #29b6f6; background: linear-gradient(45deg, #0b1a2b, #1a3a5c); font-size: 1.1rem; padding: 12px 30px; box-shadow: 0 0 20px rgba(41,182,246,0.4);">REMATCH</button>
+            <button id="duel-result-close-btn" class="primary-btn"
+              style="background: transparent; border-color: #b892b0; color: #b892b0; font-size: 1.1rem; padding: 12px 30px;">RETURN</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Workshop Menu -->
-      <div id="workshop-menu" class="overlay-menu hidden">
+      <div id="workshop-menu" class="overlay-menu hidden"
+        style="justify-content: flex-start; padding-top: 5vh; padding-bottom: 5vh; overflow-y: auto;">
         <h2>THE WORKSHOP</h2>
         <div class="stats-overview" style="margin-bottom: 20px;">
           <p style="color: #ffd700; font-size: 1.2rem;">Available XP: <span id="workshop-xp">0</span></p>
@@ -204,6 +385,18 @@
               <button id="skill-combo-btn" class="skill-node locked" data-cost="5000">
                 <span class="skill-name">Quickened Mind (Start games at 10 Combo)</span>
                 <span class="skill-cost">5000 XP</span>
+              </button>
+              <button id="skill-burst-btn" class="skill-node locked" data-cost="3000">
+                <span class="skill-name">Mana Overflow (Nova Ultimate restores 1 Barrier)</span>
+                <span class="skill-cost">3000 XP</span>
+              </button>
+              <button id="skill-vision-btn" class="skill-node locked" data-cost="4000">
+                <span class="skill-name">True Sight (-50% Boss Blind Duration)</span>
+                <span class="skill-cost">4000 XP</span>
+              </button>
+              <button id="skill-greed-btn" class="skill-node locked" data-cost="7000">
+                <span class="skill-name">Mage's Greed (+25% XP Gained per run)</span>
+                <span class="skill-cost">7000 XP</span>
               </button>
             </div>
           </div>

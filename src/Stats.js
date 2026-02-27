@@ -209,7 +209,13 @@ export class Stats {
         }
 
         // Convert score to XP (10% of score becomes XP)
-        const gainedXP = Math.floor(this.score * 0.1);
+        let gainedXP = Math.floor(this.score * 0.1);
+
+        // Mage's Greed Skill: +25% XP
+        if (this.hasSkill('greed')) {
+            gainedXP = Math.floor(gainedXP * 1.25);
+        }
+
         if (gainedXP > 0) this.addXP(gainedXP);
     }
 
