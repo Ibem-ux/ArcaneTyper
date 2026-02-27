@@ -601,9 +601,9 @@ h1 .highlight {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  z-index: 0;
+  z-index: 1;
   /* Keep it behind text but clickable */
-  pointer-events: auto;
+  pointer-events: none;
   /* Allow clicking the background image */
   cursor: pointer;
   transition: all 0.5s ease;
@@ -632,6 +632,7 @@ h1 .highlight {
   opacity: 0.8;
   transition: opacity 0.5s ease, transform 0.5s ease;
   transform-origin: bottom left;
+  pointer-events: auto;
 }
 
 .mage-silhouette-img img {
@@ -675,8 +676,8 @@ h1 .highlight {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  z-index: 0;
-  pointer-events: auto;
+  z-index: 1;
+  pointer-events: none;
   cursor: pointer;
   transition: all 0.5s ease;
   overflow: hidden;
@@ -705,6 +706,7 @@ h1 .highlight {
   transform-origin: center right;
   transform: translateY(-50%);
   /* Adjust for top: 50% perfect centering */
+  pointer-events: auto;
 }
 
 .duel-silhouette-img img {
