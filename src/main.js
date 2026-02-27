@@ -54,11 +54,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const practiceReturnBtn = document.getElementById('practice-return-btn');
   const practiceRetryBtn = document.getElementById('practice-retry-btn');
   const restartBtn = document.getElementById('restart-btn');
+  const returnDashboardBtn = document.getElementById('return-dashboard-btn');
+  const forfeitBtn = document.getElementById('forfeit-btn');
   const openLeaderboardBtn = document.getElementById('open-leaderboard-btn');
   const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
   const workshopBtn = document.getElementById('workshop-btn');
   const closeWorkshopBtn = document.getElementById('close-workshop-btn');
-  const profileBtn = document.getElementById('profile-btn');
   const tabBtns = document.querySelectorAll('.tab-btn');
 
   // Workshop Elements
@@ -96,6 +97,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ccToggleMode = document.getElementById('cc-toggle-mode');
   const ccTitle = document.getElementById('cc-title');
   const ccSubtitle = document.getElementById('cc-subtitle');
+  const ccEmailContainer = document.getElementById('cc-email-container');
+  const ccEmail = document.getElementById('cc-email');
+  const ccUsernameLabel = document.getElementById('cc-username-label');
+  const togglePasswordBtn = document.getElementById('toggle-password-btn');
 
   // Profile Menu UI
   const profileMenu = document.getElementById('profile-menu');
@@ -110,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Authentication & Initialization ───────────────────────────────────────
 
-  let isLoginMode = false;
+  let isLoginMode = true;
 
   async function checkSession() {
     startMenu.classList.add('hidden');
@@ -154,6 +159,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     ccUsername.focus();
   }
 
+  // Password Visibility Toggle
+  if (togglePasswordBtn && ccPassword) {
+    togglePasswordBtn.addEventListener('click', () => {
+      if (ccPassword.type === 'password') {
+        ccPassword.type = 'text';
+        togglePasswordBtn.classList.add('revealed');
+        togglePasswordBtn.title = "Hide Password";
+      } else {
+        ccPassword.type = 'password';
+        togglePasswordBtn.classList.remove('revealed');
+        togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
+      }
+    });
+  }
+
   if (ccToggleMode) {
     ccToggleMode.addEventListener('click', (e) => {
       e.preventDefault();
@@ -163,16 +183,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (isLoginMode) {
         ccTitle.innerText = "MAGE RECOGNITION";
-        ccSubtitle.innerText = "Speak your True Name and Incantation.";
+        ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
         ccClassContainer.style.display = 'none';
         ccNicknameContainer.style.display = 'none';
         ccCreateBtn.innerText = "ENTER LIBRARY";
         ccToggleMode.innerText = "I need to register a new Mage Card.";
+        ccEmailContainer.style.display = 'none';
+        ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
+        ccUsername.placeholder = "e.g. mage@library.com";
       } else {
         ccTitle.innerText = "MAGE REGISTRATION";
         ccSubtitle.innerText = "Forge your identity before entering the library.";
         ccClassContainer.style.display = 'flex';
         ccNicknameContainer.style.display = 'flex';
+        ccEmailContainer.style.display = 'flex';
+        ccUsernameLabel.innerText = "True Name (Username):";
+        ccUsername.placeholder = "e.g. invoker123";
         ccCreateBtn.innerText = "SEAL MAGE CARD";
         ccToggleMode.innerText = "Already have a Mage Card?";
       }
@@ -180,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   ccCreateBtn.addEventListener('click', async () => {
-    const username = ccUsername.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const username = ccUsername.value.trim().toLowerCase();
     const displayName = ccName.value.trim();
     const password = ccPassword ? ccPassword.value : '';
     const discipline = ccClass ? ccClass.value : 'Scholar';
@@ -195,14 +221,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (supabase && password) {
+    const emailToUse = ccEmail && ccEmail.value.trim() ? ccEmail.value.trim() : '';
+
+    if (!isLoginMode && !emailToUse) {
+      if (ccErrorMsg) ccErrorMsg.innerText = "Registration requires an Owl Delivery (Email Address).";
+      return;
+    }
+
+    if (supabase) {
+      if (!password) {
+        if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must provide their Secret Incantation (Password).";
+        return;
+      }
+
       ccCreateBtn.disabled = true;
       const fakeEmail = `${username}@gmail.com`;
 
       if (isLoginMode) {
         // LOGIN
+        // If the username contains an '@', they entered their email directly. Use it.
+        // Otherwise, they entered their True Name, but we don't know their email.
+        // For security, Supabase requires the email to log in.
+        const isEmail = username.includes('@');
+        let loginEmail = isEmail ? username : '';
+
+        if (!isEmail) {
+          if (ccErrorMsg) ccErrorMsg.innerText = "To log in securely, please provide your Owl Delivery (Email) instead of your True Name.";
+          ccCreateBtn.disabled = false;
+          return;
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: fakeEmail,
+          email: loginEmail,
           password: password,
         });
 
@@ -218,14 +268,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
       } else {
-        // SIGN UP
+        // SIGN UP (Uses the provided real email address)
         const { data, error } = await supabase.auth.signUp({
-          email: fakeEmail,
+          email: emailToUse,
           password: password,
           options: {
             data: {
               mage_title: displayName,
-              discipline: discipline
+              discipline: discipline,
+              true_name: username // Store the specific username alongside it just in case
             }
           }
         });
@@ -247,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
     } else {
-      // Local fallback
+      // Offline / Local fallback (No Supabase)
       game.stats.mageName = isLoginMode ? username : displayName;
     }
 
@@ -269,11 +320,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     menuBestWpm.innerText = game.stats.bestWPM;
 
     // Update Avatar Wand Color
-    const avatarWandGlow = document.getElementById('avatar-wand-glow');
-    if (avatarWandGlow) {
-      avatarWandGlow.style.backgroundColor = game.stats.wandColor;
-      avatarWandGlow.style.boxShadow = `0 0 15px 5px ${game.stats.wandColor}66`; // 66 is hex for roughly 40% opacity
-    }
+    const wandGlows = document.querySelectorAll('.mage-wand-glow-img');
+    wandGlows.forEach(glow => {
+      glow.style.backgroundColor = game.stats.wandColor;
+      glow.style.boxShadow = `0 0 15px 5px ${game.stats.wandColor}66`; // 66 is hex for roughly 40% opacity
+    });
   }
   updateMenuStats();
 
@@ -567,9 +618,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   startBtn.addEventListener('click', startGame);
   restartBtn.addEventListener('click', startGame);
+  if (returnDashboardBtn) {
+    returnDashboardBtn.addEventListener('click', () => {
+      gameOverMenu.classList.add('hidden');
+      gameOverMenu.classList.remove('active');
+      startMenu.classList.remove('hidden');
+      startMenu.classList.add('active');
+    });
+  }
   practiceBtn.addEventListener('click', startPractice);
   practiceReturnBtn.addEventListener('click', quitPractice);
   practiceRetryBtn.addEventListener('click', startPractice);
+  forfeitBtn.addEventListener('click', () => {
+    // Instantly drain lives and trigger game over logic
+    game.stats.lives = 0;
+    game.triggerGameOver();
+  });
   openLeaderboardBtn.addEventListener('click', () => openLeaderboard('score'));
   closeLeaderboardBtn.addEventListener('click', () => {
     leaderboardMenu.classList.remove('active');
@@ -592,10 +656,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Extract username from fake email
-        if (session.user.email) {
+        // First try to use the stored true_name metadata
+        if (session.user.user_metadata && session.user.user_metadata.true_name) {
+          profileUsernameUI.innerText = session.user.user_metadata.true_name;
+        } else if (session.user.email) {
+          // Fallback to legacy email parsing if true_name metadata is missing
           profileUsernameUI.innerText = session.user.email.split('@')[0];
         }
+
         if (session.user.user_metadata && session.user.user_metadata.discipline) {
           profileClassUI.innerText = session.user.user_metadata.discipline;
         } else {
@@ -611,7 +679,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     profileMenu.classList.add('active');
   };
 
-  profileBtn.addEventListener('click', openProfileHandler);
   if (backgroundMage) {
     backgroundMage.addEventListener('click', openProfileHandler);
   }
@@ -637,19 +704,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // reset to login mode visually
     isLoginMode = true;
     ccTitle.innerText = "MAGE RECOGNITION";
-    ccSubtitle.innerText = "Speak your True Name and Incantation.";
+    ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
     ccClassContainer.style.display = 'none';
     ccNicknameContainer.style.display = 'none';
+    if (ccEmailContainer) ccEmailContainer.style.display = 'none';
+    if (ccUsernameLabel) ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
+    ccUsername.placeholder = "e.g. mage@library.com";
     ccCreateBtn.innerText = "ENTER LIBRARY";
     ccToggleMode.innerText = "I need to register a new Mage Card.";
     ccUsername.value = '';
     ccName.value = '';
+    ccUsername.value = '';
+    ccName.value = '';
+    if (ccEmail) ccEmail.value = '';
 
-    if (ccPassword) ccPassword.value = '';
+    if (ccPassword) {
+      ccPassword.value = '';
+      ccPassword.type = 'password';
+    }
+    if (togglePasswordBtn) {
+      togglePasswordBtn.classList.remove('revealed');
+      togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
+    }
     if (ccErrorMsg) ccErrorMsg.innerText = '';
 
     showCharacterCreation();
   });
+
 
   // Workshop Listeners
   workshopBtn.addEventListener('click', () => {

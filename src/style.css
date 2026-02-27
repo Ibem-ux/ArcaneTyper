@@ -98,6 +98,10 @@ body {
   pointer-events: none;
 }
 
+#hud button {
+  pointer-events: auto;
+}
+
 .hidden {
   display: none !important;
 }
@@ -394,6 +398,17 @@ h1 .highlight {
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
+/* Password Toggle Reveal */
+#toggle-password-btn:hover {
+  color: #ffd700 !important;
+  filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.8));
+}
+
+#toggle-password-btn.revealed {
+  color: var(--accent-primary) !important;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+
 /* Leaderboard Specific Styles */
 #leaderboard-menu {
   width: 100%;
@@ -582,8 +597,10 @@ h1 .highlight {
 
 .mage-silhouette-img {
   position: absolute;
-  bottom: 0px;
-  left: 2vw;
+  bottom: -2px;
+  /* Pull down slightly to hide the sharp bottom cut */
+  left: 0px;
+  /* Flush to the left */
   /* Align to the left */
   height: 65vh;
   /* Scale well on various screens */
@@ -599,6 +616,8 @@ h1 .highlight {
   width: auto;
   display: block;
   filter: url(#mage-stencil);
+  clip-path: inset(2px 2px 2px 2px);
+  /* Hide any outer border artifacts */
 }
 
 .mage-avatar-background:hover .mage-silhouette-img {
