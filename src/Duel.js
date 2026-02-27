@@ -79,16 +79,14 @@ export class Duel {
         });
 
         // Presence tracking: detect when opponent joins or leaves
-        this.channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-            const isOpponent = newPresences.some(p => p.key !== this.playerName);
-            if (isOpponent && this.onOpponentJoined) {
+        this.channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+            if (key !== this.playerName && this.onOpponentJoined) {
                 this.onOpponentJoined();
             }
         });
 
-        this.channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-            const isOpponent = leftPresences.some(p => p.key !== this.playerName);
-            if (isOpponent && this.onOpponentLeft) {
+        this.channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+            if (key !== this.playerName && this.onOpponentLeft) {
                 this.onOpponentLeft();
             }
         });
