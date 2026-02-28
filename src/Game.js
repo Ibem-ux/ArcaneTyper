@@ -570,8 +570,8 @@ export class Game {
     handleKeyDown(e) {
         if (!this.isRunning) return;
 
-        // Check for Ultimate Spell (Tab key)
-        if (e.key === 'Tab') {
+        // Check for Ultimate Spell (Tab or Enter key)
+        if (e.key === 'Tab' || e.key === 'Enter') {
             if (e.preventDefault) e.preventDefault(); // Prevent focus switching
             this.castUltimateSpell();
             return;

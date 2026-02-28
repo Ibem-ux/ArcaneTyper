@@ -44,7 +44,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       changes: [
         "Fixed an issue where creating a Mage Duel lobby would immediately start the game by oneself.",
         "Corrected the Suppabase Realtime presence payload evaluation for the local host.",
-        "Added this enchanted Patch Board for easier access to updates!"
+        "Added this enchanted Patch Board for easier access to updates!",
+        "Improved layout responsiveness on mobile devices (Silhouettes format to edges).",
+        "Added 'Enter' key support as an alternative to 'Tab' for casting Supernova."
       ]
     },
     {

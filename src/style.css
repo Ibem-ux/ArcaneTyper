@@ -330,6 +330,41 @@ body {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+@media (max-width: 768px) {
+  #patch-board-menu {
+    padding-top: 2vh !important;
+    padding-bottom: 2vh !important;
+  }
+
+  #patch-board-menu h2 {
+    font-size: 2rem !important;
+    /* Slightly smaller header */
+    margin-bottom: 0.2rem !important;
+  }
+
+  .patch-board-container {
+    padding: 0.5rem 1rem 0.5rem 0.5rem;
+    /* Reduce padding to save space */
+    max-height: 65vh;
+    /* Allow it to take up more vertical height */
+    max-width: 95vw !important;
+    /* Maximize width */
+  }
+
+  .patch-item {
+    padding: 0.8rem;
+  }
+
+  .patch-version {
+    font-size: 1rem;
+  }
+
+  .patch-body p,
+  .patch-body li {
+    font-size: 0.85rem;
+  }
+}
+
 .patch-item:hover {
   transform: translateX(5px);
   box-shadow: 0 5px 20px rgba(255, 215, 0, 0.15);
@@ -828,6 +863,52 @@ h1 .highlight {
 .duel-wand-glow-img {
   display: none;
   /* Hide glow since the new image is a tower without a wand */
+}
+
+/* ── Mobile Responsive Adjustments for Silhouettes ── */
+@media (max-width: 768px) {
+  .mage-silhouette-img {
+    height: 70vh;
+    /* stretch it tall */
+    opacity: 0.25;
+    /* low opacity so it doesn't block text */
+    left: -25vw;
+    /* anchor it aggressively to the left */
+    bottom: -5vh;
+    /* pull it slightly down */
+    transform-origin: bottom left;
+  }
+
+  .mage-avatar-background:hover .mage-silhouette-img {
+    transform: none;
+    /* Disable zoom on mobile */
+    opacity: 0.35;
+  }
+
+  .mage-wand-glow-img {
+    display: none;
+    /* Hide glow on mobile to reduce clutter */
+  }
+
+  .duel-silhouette-img {
+    height: 50vh;
+    /* Tall tower */
+    opacity: 0.25;
+    right: -20vw;
+    /* anchor aggressively to the right */
+    top: 20%;
+    /* Pull it up so it acts as the right-side boundary */
+    transform-origin: top right;
+    transform: none;
+    /* reset the translate y so we can explicitly position via top */
+  }
+
+  .duel-avatar-background:hover .duel-silhouette-img {
+    transform: none;
+    /* Disable zoom on mobile */
+    opacity: 0.35;
+    filter: none;
+  }
 }
 
 @keyframes floatWandImage {
