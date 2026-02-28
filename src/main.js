@@ -30,6 +30,95 @@ document.addEventListener('DOMContentLoaded', async () => {
   const practiceUi = document.getElementById('practice-ui');
   const workshopMenu = document.getElementById('workshop-menu');
 
+  // Patch Board
+  const patchBoardMenu = document.getElementById('patch-board-menu');
+  const openPatchBoardBtn = document.getElementById('open-patch-board-btn');
+  const closePatchBoardBtn = document.getElementById('close-patch-board-btn');
+  const patchNotesContainer = document.getElementById('patch-notes-container');
+
+  const patchNotes = [
+    {
+      version: "v2.2.1",
+      date: "February 28, 2026",
+      desc: "Emergency Patch - Mage Duel Fixes",
+      changes: [
+        "Fixed an issue where creating a Mage Duel lobby would immediately start the game by oneself.",
+        "Corrected the Suppabase Realtime presence payload evaluation for the local host.",
+        "Added this enchanted Patch Board for easier access to updates!"
+      ]
+    },
+    {
+      version: "v2.2.0",
+      date: "February 27, 2026",
+      desc: "Multiplayer Real-Time Mage Duels",
+      changes: [
+        "Introduced 1v1 Mage Duels.",
+        "Battle other typers in real time using 6-character room codes.",
+        "Live opponent tracking (Score, WPM, Barriers) powered by Supabase Realtime."
+      ]
+    },
+    {
+      version: "v2.1.0",
+      date: "February 23, 2026",
+      desc: "The Scribe's Trial & Canvas Engine",
+      changes: [
+        "New Practice Mode: The Scribe's Trial with timed modes (15s, 30s, 60s).",
+        "Added MonkeyType-style spaced-word mechanics and graphing.",
+        "Overhauled the game to run on an HTML5 `<canvas>` engine for better performance."
+      ]
+    }
+  ];
+
+  function populatePatchBoard() {
+    patchNotesContainer.innerHTML = '';
+    patchNotes.forEach(patch => {
+      const item = document.createElement('div');
+      item.className = 'patch-item';
+
+      const header = document.createElement('div');
+      header.className = 'patch-header';
+      header.innerHTML = `<span class="patch-version">${patch.version}</span><span class="patch-date">${patch.date}</span>`;
+
+      const body = document.createElement('div');
+      body.className = 'patch-body';
+      const p = document.createElement('p');
+      p.innerText = patch.desc;
+      const ul = document.createElement('ul');
+
+      patch.changes.forEach(change => {
+        const li = document.createElement('li');
+        li.innerText = change;
+        ul.appendChild(li);
+      });
+
+      body.appendChild(p);
+      body.appendChild(ul);
+      item.appendChild(header);
+      item.appendChild(body);
+      patchNotesContainer.appendChild(item);
+    });
+  }
+
+  // Populate it once on load
+  populatePatchBoard();
+
+  openPatchBoardBtn.addEventListener('click', () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    patchBoardMenu.classList.remove('hidden');
+    // small delay to let display:flex apply before opacity transition
+    setTimeout(() => {
+      patchBoardMenu.classList.add('active');
+    }, 10);
+  });
+
+  closePatchBoardBtn.addEventListener('click', () => {
+    patchBoardMenu.classList.remove('active');
+    patchBoardMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
   // Duel UI
   const duelLobbyMenu = document.getElementById('duel-lobby-menu');
   const duelLobbyIdlePanel = document.getElementById('duel-lobby-idle');

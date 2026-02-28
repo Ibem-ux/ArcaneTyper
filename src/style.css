@@ -287,6 +287,109 @@ body {
   transform: translateX(0);
 }
 
+/* ── Patch Board Menu (Styling) ── */
+#patch-board-menu {
+  background: rgba(15, 10, 20, 0.95);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.patch-board-container {
+  padding: 1rem 2rem 1rem 1rem;
+  /* Extra right padding for scrollbar */
+  max-height: clamp(300px, 50vh, 500px);
+  /* Limit height to force scroll inside container instead of whole menu */
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar for Patch Board */
+.patch-board-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.patch-board-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.patch-board-container::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+.patch-board-container::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+.patch-item {
+  background: rgba(43, 27, 70, 0.5);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 8px 8px 0;
+  padding: 1.2rem;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.patch-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.15);
+  background: rgba(43, 27, 70, 0.8);
+}
+
+.patch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.patch-version {
+  color: var(--accent-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+
+.patch-date {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.patch-body p {
+  color: var(--text-main);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+
+.patch-body ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.patch-body li {
+  color: #ccc;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+  padding-left: 1.2rem;
+  line-height: 1.4;
+}
+
+.patch-body li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  color: var(--accent-primary);
+  font-size: 0.8rem;
+}
+
 h1 {
   font-size: clamp(2.5rem, 6vh, 4rem);
   font-weight: 900;
