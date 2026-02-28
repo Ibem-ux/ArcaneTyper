@@ -115,6 +115,12 @@ export class Game {
         this.currentSpeedMultiplier = settings.speed;
         this.spawnInterval = settings.spawnInt;
 
+        if (this.stats.hasSkill('clairvoyance')) {
+            this.spawnInterval *= 1.25; // 25% slower spawns
+        }
+
+        this.precognitionUsed = false;
+
         this.blindTimer = 0; // Tracks active Blind spell duration
 
         this.stats.reset();
@@ -209,6 +215,31 @@ export class Game {
                 const textHitboxSize = 20;
 
                 if (distance < activeRadius + textHitboxSize) {
+                    if (this.stats.hasSkill('precognition') && !this.precognitionUsed) {
+                        this.precognitionUsed = true;
+                        this.words.splice(i, 1);
+                        if (word === this.targetedWord) this.targetedWord = null;
+
+                        // Free Nova Cast
+                        this.audio.playExplosion();
+                        this._triggerShake(15, 600);
+                        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#9C27B0', '#ffffff', '#E040FB'] }, 3.0);
+
+                        for (let j = this.words.length - 1; j >= 0; j--) {
+                            const w = this.words[j];
+                            if (w.dying || w.isBossAttack) continue;
+                            this.stats.addScore(w.text.length, false);
+                            w.dying = true;
+                            this.spawnExplosion(w.x, w.y, w.elementColors, 0.5);
+                            if (w === this.targetedWord) this.targetedWord = null;
+                        }
+
+                        if (this.isBossPhase && this.boss && !this.boss.isDead) {
+                            for (let j = 0; j < 3; j++) this.boss.takeDamage();
+                        }
+                        continue;
+                    }
+
                     this.words.splice(i, 1);
                     if (word === this.targetedWord) this.targetedWord = null;
 
@@ -564,6 +595,11 @@ export class Game {
         this.audio.playExplosion();
         this.bossesDefeated++;
 
+        if (this.stats.hasSkill('siphon')) {
+            this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
+            this.stats.updateHUD();
+        }
+
         this.spawnTimer = -2000;
     }
 
@@ -626,7 +662,7 @@ export class Game {
 
             if (word.untyped.length === 0) {
                 // Word fully typed — trigger death animation
-                this.stats.addScore(word.text.length);
+                this.stats.addScore(word.text.length, true, word.mistakesMade === 0);
                 word.dying = true; // Let the animation play instead of instant splice
                 this.audio.playExplosion();
 
@@ -635,6 +671,23 @@ export class Game {
                 this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors, comboBonus);
                 this.playerAnimTimer = 200;
                 this._triggerShake(4 + comboBonus * 4, 150 + comboBonus * 100);
+
+                // Combustion Talent (Explosion AoE)
+                if (this.stats.hasSkill('combustion') && this.stats.combo >= 50) {
+                    const radius = 150;
+                    for (let j = this.words.length - 1; j >= 0; j--) {
+                        const otherW = this.words[j];
+                        if (!otherW.dying && !otherW.isBossAttack && otherW !== word) {
+                            const dist = Math.hypot(otherW.x - word.x, otherW.y - word.y);
+                            if (dist < radius) {
+                                otherW.dying = true;
+                                this.stats.addScore(otherW.text.length, false);
+                                this.spawnExplosion(otherW.x, otherW.y, otherW.elementColors, 0.5);
+                                if (otherW === this.targetedWord) this.targetedWord = null;
+                            }
+                        }
+                    }
+                }
 
                 // Fire counter-attack projectile at boss
                 if (this.isBossPhase && this.boss && !this.boss.isDead && word.isBossAttack) {
@@ -650,6 +703,7 @@ export class Game {
             }
         } else {
             this.stats.recordStroke(false);
+            if (word) word.mistakesMade++;
 
             // Armored words reset on typo!
             if (word.variant === 'armored' && word.typed.length > 0) {
@@ -682,6 +736,13 @@ export class Game {
                 this.stats.lives++;
                 this.stats.updateLivesDisplay();
             }
+        }
+
+        // Echo Cast Skill: 20% chance to immediately refund 50% max mana
+        if (this.stats.hasSkill('echo') && Math.random() < 0.20) {
+            this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
+            this.stats.updateHUD();
+            this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#FF5722', '#FFE0B2', '#E64A19'] }, 1.5);
         }
 
         this.audio.playExplosion();

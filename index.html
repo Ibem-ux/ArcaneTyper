@@ -63,32 +63,35 @@
 
       <!-- Start Menu -->
       <div id="start-menu" class="overlay-menu active">
-        <h1>ARCANE<span class="highlight">TYPER</span></h1>
-        <p class="subtitle">Enchanted Library Edition - v2.2.1</p>
-        <div class="stats-overview">
-          <p>Mastery Score: <span id="menu-best-score">0</span></p>
-          <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
-        </div>
-        <div class="difficulty-selector">
-          <label for="difficulty-select">Select Challenge:</label>
-          <select id="difficulty-select">
-            <option value="easy">Novice (Easy)</option>
-            <option value="normal" selected>Adept (Normal)</option>
-            <option value="hard">Archmage (Hard)</option>
-            <option value="hell">Cataclysm (Hell)</option>
-          </select>
-        </div>
-        <div class="button-group"
-          style="display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 15px); width: 100%; max-width: 300px;">
-          <button id="start-btn" class="primary-btn">ARCANE DEFENSE (SURVIVAL)</button>
-          <button id="practice-btn" class="primary-btn"
-            style="background: linear-gradient(45deg, #1e0b2b, #4a2c68); border-color: #b892b0;">THE SCRIBE'S TRIAL
-            (PRACTICE)</button>
-          <button id="workshop-btn" class="primary-btn"
-            style="background: linear-gradient(45deg, #2b1b0b, #684a2c); border-color: #ffd700; margin-top: clamp(8px, 1.5vh, 15px);">THE
-            WORKSHOP (UPGRADES)</button>
-          <button id="open-leaderboard-btn" class="primary-btn" style="margin-top: clamp(8px, 1.5vh, 15px);">HALL OF
-            FAME</button>
+        <div
+          style="display: flex; flex-direction: column; align-items: center; gap: clamp(5px, 1vh, 15px); width: 100%; z-index: 5; pointer-events: none;">
+          <h1>ARCANE<span class="highlight">TYPER</span></h1>
+          <p class="subtitle">Enchanted Library Edition - v2.2.2</p>
+          <div class="stats-overview">
+            <p>Mastery Score: <span id="menu-best-score">0</span></p>
+            <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
+          </div>
+          <div class="difficulty-selector">
+            <label for="difficulty-select">Select Challenge:</label>
+            <select id="difficulty-select">
+              <option value="easy">Novice (Easy)</option>
+              <option value="normal" selected>Adept (Normal)</option>
+              <option value="hard">Archmage (Hard)</option>
+              <option value="hell">Cataclysm (Hell)</option>
+            </select>
+          </div>
+          <div class="button-group"
+            style="display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 15px); width: 100%; max-width: 300px;">
+            <button id="start-btn" class="primary-btn">ARCANE DEFENSE (SURVIVAL)</button>
+            <button id="practice-btn" class="primary-btn"
+              style="background: linear-gradient(45deg, #1e0b2b, #4a2c68); border-color: #b892b0;">THE SCRIBE'S TRIAL
+              (PRACTICE)</button>
+            <button id="workshop-btn" class="primary-btn"
+              style="background: linear-gradient(45deg, #2b1b0b, #684a2c); border-color: #ffd700;">THE
+              WORKSHOP (UPGRADES)</button>
+            <button id="open-leaderboard-btn" class="primary-btn">HALL OF
+              FAME</button>
+          </div>
         </div>
 
         <!-- Background Silhouette Image (Player) -->
@@ -394,60 +397,170 @@
 
       <!-- Workshop Menu -->
       <div id="workshop-menu" class="overlay-menu hidden"
-        style="justify-content: flex-start; padding-top: 5vh; padding-bottom: 5vh; overflow-y: auto;">
-        <h2>THE WORKSHOP</h2>
-        <div class="stats-overview" style="margin-bottom: 20px;">
-          <p style="color: #ffd700; font-size: 1.2rem;">Available XP: <span id="workshop-xp">0</span></p>
-          <p style="color: #b892b0;">Player Rank: <span id="workshop-level">1</span></p>
-        </div>
+        style="justify-content: center; padding: 2vh 0; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
 
-        <div style="display: flex; gap: 2rem; width: 100%; max-width: 800px; justify-content: space-around;">
-          <!-- Skill Tree -->
-          <div class="workshop-panel">
-            <h3 style="color: #00e5ff; margin-bottom: 1rem;">Mystic Arts (Skills)</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="skill-mana-btn" class="skill-node locked" data-cost="1000">
-                <span class="skill-name">Deep Reserves (Max Mana +20)</span>
-                <span class="skill-cost">1000 XP</span>
-              </button>
-              <button id="skill-life-btn" class="skill-node locked" data-cost="2500">
-                <span class="skill-name">Aegis Ward (Start with 1 Extra Barrier)</span>
-                <span class="skill-cost">2500 XP</span>
-              </button>
-              <button id="skill-combo-btn" class="skill-node locked" data-cost="5000">
-                <span class="skill-name">Quickened Mind (Start games at 10 Combo)</span>
-                <span class="skill-cost">5000 XP</span>
-              </button>
-              <button id="skill-burst-btn" class="skill-node locked" data-cost="3000">
-                <span class="skill-name">Mana Overflow (Nova Ultimate restores 1 Barrier)</span>
-                <span class="skill-cost">3000 XP</span>
-              </button>
-              <button id="skill-vision-btn" class="skill-node locked" data-cost="4000">
-                <span class="skill-name">True Sight (-50% Boss Blind Duration)</span>
-                <span class="skill-cost">4000 XP</span>
-              </button>
-              <button id="skill-greed-btn" class="skill-node locked" data-cost="7000">
-                <span class="skill-name">Mage's Greed (+25% XP Gained per run)</span>
-                <span class="skill-cost">7000 XP</span>
-              </button>
-            </div>
+        <div class="workshop-scroll-box"
+          style="flex: 1; overflow-y: auto; width: 100%; display: flex; flex-direction: column; align-items: center; padding: 0 20px;">
+          <h2 style="margin-top: 20px;">THE WORKSHOP</h2>
+          <div class="stats-overview" style="margin-bottom: 20px;">
+            <p style="color: #ffd700; font-size: 1.2rem;">Available XP: <span id="workshop-xp">0</span></p>
+            <p style="color: #b892b0;">Player Rank: <span id="workshop-level">1</span></p>
           </div>
 
-          <!-- Wand Customization -->
-          <div class="workshop-panel">
-            <h3 style="color: #d500f9; margin-bottom: 1rem;">Arcane Focus (Wand Styles)</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button class="wand-style-btn active" data-color="#ff00ff">Amethyst</button>
-              <button class="wand-style-btn" data-color="#00ffff">Sapphire</button>
-              <button class="wand-style-btn" data-color="#ff4500">Ruby</button>
-              <button class="wand-style-btn" data-color="#32cd32">Emerald</button>
-              <button class="wand-style-btn" data-color="#ffd700">Topaz</button>
-              <button class="wand-style-btn" data-color="#ffffff">Diamond</button>
+          <div
+            style="display: flex; flex-wrap: wrap; gap: 2rem; width: 100%; max-width: 1200px; justify-content: center;">
+            <!-- Skill Trees -->
+            <div class="workshop-panel" style="flex: 2; padding: 20px;">
+              <h3
+                style="color: #00e5ff; margin-bottom: 1.5rem; text-align: center; border-bottom: 1px solid rgba(0,229,255,0.3); padding-bottom: 10px;">
+                Mystic Arts (Talent Tree)</h3>
+
+              <div style="display: flex; gap: 20px; justify-content: space-between;">
+
+                <!-- Scholar Branch -->
+                <div class="talent-branch"
+                  style="display: flex; flex-direction: column; gap: 15px; flex: 1; align-items: center;">
+                  <h4 style="color: #4CAF50; margin-bottom: 5px; text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);">The
+                    Scholar
+                  </h4>
+                  <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 15px; text-align: center;">Utility &
+                    Economy
+                  </div>
+
+                  <button id="skill-mana-btn" class="skill-node locked" data-cost="1000">
+                    <span class="skill-name">Deep Reserves<br><span style="font-size: 0.75rem; color: #ccc;">Max Mana
+                        +20</span></span>
+                    <span class="skill-cost">1000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-greed-btn" class="skill-node locked" data-cost="7000">
+                    <span class="skill-name">Mage's Greed<br><span style="font-size: 0.75rem; color: #ccc;">+25% XP
+                        Gained</span></span>
+                    <span class="skill-cost">7000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-siphon-btn" class="skill-node locked" data-cost="12000">
+                    <span class="skill-name">Arcane Siphon<br><span style="font-size: 0.75rem; color: #ccc;">Boss Kills
+                        restore 50% Mana</span></span>
+                    <span class="skill-cost">12000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-philosopher-btn" class="skill-node locked" data-cost="18000">
+                    <span class="skill-name">Philosopher's Focus<br><span style="font-size: 0.75rem; color: #ccc;">100%
+                        Acc words give Bonus XP</span></span>
+                    <span class="skill-cost">18000 XP</span>
+                  </button>
+                </div>
+
+                <!-- Pyromancer Branch -->
+                <div class="talent-branch"
+                  style="display: flex; flex-direction: column; gap: 15px; flex: 1; align-items: center; border-left: 1px dashed rgba(255,255,255,0.1); border-right: 1px dashed rgba(255,255,255,0.1); padding: 0 10px;">
+                  <h4 style="color: #FF5722; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 87, 34, 0.5);">The
+                    Pyromancer</h4>
+                  <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 15px; text-align: center;">Destruction &
+                    Combo</div>
+
+                  <button id="skill-combo-btn" class="skill-node locked" data-cost="5000">
+                    <span class="skill-name">Quickened Mind<br><span style="font-size: 0.75rem; color: #ccc;">Start with
+                        10 Combo</span></span>
+                    <span class="skill-cost">5000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-burst-btn" class="skill-node locked" data-cost="3000">
+                    <span class="skill-name">Mana Overflow<br><span style="font-size: 0.75rem; color: #ccc;">Nova
+                        restores
+                        1 Barrier</span></span>
+                    <span class="skill-cost">3000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-combustion-btn" class="skill-node locked" data-cost="15000">
+                    <span class="skill-name">Combustion<br><span style="font-size: 0.75rem; color: #ccc;">At 50x Combo,
+                        explosions clear nearby words</span></span>
+                    <span class="skill-cost">15000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-echo-btn" class="skill-node locked" data-cost="20000">
+                    <span class="skill-name">Echo Cast<br><span style="font-size: 0.75rem; color: #ccc;">Nova has 20%
+                        chance to refund 50% Mana</span></span>
+                    <span class="skill-cost">20000 XP</span>
+                  </button>
+                </div>
+
+                <!-- Oracle Branch -->
+                <div class="talent-branch"
+                  style="display: flex; flex-direction: column; gap: 15px; flex: 1; align-items: center;">
+                  <h4 style="color: #9C27B0; margin-bottom: 5px; text-shadow: 0 0 5px rgba(156, 39, 176, 0.5);">The
+                    Oracle
+                  </h4>
+                  <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 15px; text-align: center;">Survival &
+                    Vision
+                  </div>
+
+                  <button id="skill-life-btn" class="skill-node locked" data-cost="2500">
+                    <span class="skill-name">Aegis Ward<br><span style="font-size: 0.75rem; color: #ccc;">Start with +1
+                        Barrier</span></span>
+                    <span class="skill-cost">2500 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-vision-btn" class="skill-node locked" data-cost="4000">
+                    <span class="skill-name">True Sight<br><span style="font-size: 0.75rem; color: #ccc;">-50% Boss
+                        Blind
+                        Duration</span></span>
+                    <span class="skill-cost">4000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-clairvoyance-btn" class="skill-node locked" data-cost="10000">
+                    <span class="skill-name">Clairvoyance<br><span style="font-size: 0.75rem; color: #ccc;">Words spawn
+                        slower but give more pts</span></span>
+                    <span class="skill-cost">10000 XP</span>
+                  </button>
+
+                  <div class="branch-connector">↓</div>
+
+                  <button id="skill-precognition-btn" class="skill-node locked" data-cost="25000">
+                    <span class="skill-name">Precognition<br><span style="font-size: 0.75rem; color: #ccc;">First hit
+                        taken auto-casts free Nova instead</span></span>
+                    <span class="skill-cost">25000 XP</span>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Wand Customization -->
+            <div class="workshop-panel">
+              <h3 style="color: #d500f9; margin-bottom: 1rem;">Arcane Focus (Wand Styles)</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="wand-style-btn active" data-color="#ff00ff">Amethyst</button>
+                <button class="wand-style-btn" data-color="#00ffff">Sapphire</button>
+                <button class="wand-style-btn" data-color="#ff4500">Ruby</button>
+                <button class="wand-style-btn" data-color="#32cd32">Emerald</button>
+                <button class="wand-style-btn" data-color="#ffd700">Topaz</button>
+                <button class="wand-style-btn" data-color="#ffffff">Diamond</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <button id="close-workshop-btn" class="primary-btn" style="margin-top: 2rem;">RETURN</button>
+        <div style="flex-shrink: 0; padding-top: 20px; padding-bottom: 20px;">
+          <button id="close-workshop-btn" class="primary-btn">RETURN</button>
+        </div>
       </div>
 
       <!-- Scribe's Trial UI -->
@@ -611,44 +724,52 @@
       </div>
 
       <!-- Mage Profile Menu -->
-      <div id="profile-menu" class="overlay-menu hidden" style="z-index: 35;">
-        <h2 style="position: relative; z-index: 10;">MAGE PROFILE</h2>
+      <div id="profile-menu" class="overlay-menu hidden"
+        style="z-index: 35; justify-content: center; overflow: hidden;">
         <div
-          style="display: flex; flex-direction: column; gap: 2rem; width: 400px; max-width: 90vw; padding: 2rem; position: relative; z-index: 10;">
-
-          <div style="text-align: center;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">Mage
-              Title</p>
-            <h3 id="profile-nickname"
-              style="color: #ffd700; font-size: 2rem; margin-top: 5px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
-              Unknown Mage</h3>
-          </div>
-
-          <div style="text-align: center;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">True
-              Name (Login ID)</p>
-            <p id="profile-username" style="color: white; font-size: 1.2rem; margin-top: 5px; font-family: monospace;">
-              unknown</p>
-          </div>
-
-          <div style="text-align: center;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
-              Discipline</p>
-            <p id="profile-class" style="color: #00e5ff; font-size: 1.2rem; margin-top: 5px;">Novice</p>
-          </div>
-
+          style="margin: auto; padding: 10px 0; display: flex; flex-direction: column; align-items: center; width: 100%; pointer-events: none;">
+          <h2 style="position: relative; z-index: 10; pointer-events: auto; margin-bottom: 0;">MAGE PROFILE</h2>
           <div
-            style="text-align: center; padding: 15px; border: 1px dashed var(--text-muted); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
-            <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">Badges & Achievements</p>
-            <p style="color: #b892b0; font-size: 0.85rem; margin-top: 10px; font-style: italic;">Coming Soon in Phase 4
-            </p>
-          </div>
+            style="display: flex; flex-direction: column; gap: 1.5rem; width: 400px; max-width: 90vw; padding: 1rem; position: relative; z-index: 10; pointer-events: auto;">
 
-          <div style="display: flex; gap: 10px; margin-top: 1rem;">
-            <button id="close-profile-btn" class="primary-btn" style="flex: 1; font-size: 0.9rem;">RETURN</button>
-            <button id="logout-btn" class="primary-btn"
-              style="flex: 1; border-color: var(--accent-danger); color: var(--accent-danger); font-size: 0.9rem;">SEVER
-              BOND</button>
+            <div style="text-align: center;">
+              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
+                Mage
+                Title</p>
+              <h3 id="profile-nickname"
+                style="color: #ffd700; font-size: clamp(1.2rem, 5vw, 2rem); margin-top: 5px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); word-wrap: break-word; overflow-wrap: break-word;">
+                Unknown Mage</h3>
+            </div>
+
+            <div style="text-align: center;">
+              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
+                True
+                Name (Login ID)</p>
+              <p id="profile-username"
+                style="color: white; font-size: clamp(0.9rem, 4vw, 1.2rem); margin-top: 5px; font-family: monospace; word-wrap: break-word; overflow-wrap: break-word;">
+                unknown</p>
+            </div>
+
+            <div style="text-align: center;">
+              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
+                Discipline</p>
+              <p id="profile-class" style="color: #00e5ff; font-size: 1.2rem; margin-top: 5px;">Novice</p>
+            </div>
+
+            <div
+              style="text-align: center; padding: 15px; border: 1px dashed var(--text-muted); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">Badges & Achievements</p>
+              <p style="color: #b892b0; font-size: 0.85rem; margin-top: 10px; font-style: italic;">Coming Soon in Phase
+                4
+              </p>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
+              <button id="close-profile-btn" class="primary-btn" style="flex: 1; font-size: 0.9rem;">RETURN</button>
+              <button id="logout-btn" class="primary-btn"
+                style="flex: 1; border-color: var(--accent-danger); color: var(--accent-danger); font-size: 0.9rem;">SEVER
+                BOND</button>
+            </div>
           </div>
         </div>
       </div>

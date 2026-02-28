@@ -38,6 +38,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const patchNotes = [
     {
+      version: "v2.2.2",
+      date: "February 28, 2026",
+      desc: "UI Polish & Layout Adjustments",
+      changes: [
+        "Fixed the overlapping layout in the Mage Profile.",
+        "Adjusted the Start Menu layout to prevent scrolling on standard displays.",
+        "Fixed Mage and Tower silhouette hover interactions."
+      ]
+    },
+    {
       version: "v2.2.1",
       date: "February 28, 2026",
       desc: "Emergency Patch - Mage Duel Fixes",

@@ -87,10 +87,16 @@ export class Stats {
         return 1.0;
     }
 
-    addScore(wordLength, grantMana = true) {
+    addScore(wordLength, grantMana = true, isPerfect = false) {
         const comboMultiplier = this.getComboMultiplier();
         this.score += Math.floor(wordLength * 10 * comboMultiplier);
         this.wordsTyped++;
+
+        // Philosopher's Focus Skill: +2 XP for perfectly typed words
+        if (isPerfect && this.hasSkill('philosopher')) {
+            this.addXP(2);
+            // Spawn a small gold "+2 XP" particle? Handled silently here for now or we can let Game.js know.
+        }
 
         // Add mana per word completed based on length
         if (grantMana && this.mana < this.maxMana) {

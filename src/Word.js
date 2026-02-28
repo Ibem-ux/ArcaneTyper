@@ -5,10 +5,10 @@ export class Word {
         this.text = text;
         this.isBossAttack = options.isBossAttack || false;
 
-        // Variants: 'normal', 'armored', 'ghost', 'swarm'
         this.variant = options.variant || 'normal';
         this.typed = "";
         this.untyped = text;
+        this.mistakesMade = 0;
 
         // Caching text measurements
         this._lastTypedStr = null;
