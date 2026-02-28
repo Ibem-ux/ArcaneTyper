@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       desc: "The Scribe's Trial & Canvas Engine",
       changes: [
         "New Practice Mode: The Scribe's Trial with timed modes (15s, 30s, 60s).",
-        "Added MonkeyType-style spaced-word mechanics and graphing.",
+        "Added classic continuous-flow spaced-word mechanics and graphing.",
         "Overhauled the game to run on an HTML5 `<canvas>` engine for better performance."
       ]
     }
