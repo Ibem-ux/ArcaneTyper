@@ -5,6 +5,7 @@ import { WordDictionary } from './WordDictionary.js';
 import { Stats } from './Stats.js';
 import { Particle } from './Particle.js';
 import { AudioController } from './AudioController.js';
+import { FloatingText } from './FloatingText.js';
 
 export class Game {
     constructor(canvasId) {
@@ -17,6 +18,8 @@ export class Game {
 
         this.words = [];
         this.particles = [];
+        this.ambientParticles = [];
+        this.floatingTexts = [];
         this.targetedWord = null;
 
         this.lastTime = 0;
@@ -64,6 +67,19 @@ export class Game {
                 brightness: Math.random() * 0.5 + 0.3
             });
         }
+
+        // Init ambient atmospheric particles (dust motes)
+        this.ambientParticles = [];
+        for (let i = 0; i < 40; i++) {
+            this.ambientParticles.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 2 + 1,
+                vx: (Math.random() - 0.5) * 0.05,
+                vy: (Math.random() - 0.5) * 0.05 - 0.02, // slight upward drift
+                alpha: Math.random() * 0.3 + 0.1
+            });
+        }
     }
 
     start(difficulty = 'normal') {
@@ -89,6 +105,7 @@ export class Game {
         this.words = [];
         this.particles = [];
         this.projectiles = [];
+        this.floatingTexts = [];
         this.targetedWord = null;
         this.spawnTimer = 0;
         this.spawnCount = 0;
@@ -250,6 +267,7 @@ export class Game {
                     // Drop combo on taking damage
                     this.stats.combo = 0;
                     this.stats.updateHUD();
+                    this.floatingTexts.push(new FloatingText("Hits Taken", wizX, wizY - 120, hitColor, 28));
 
                     const isDead = this.stats.loseLife();
                     if (isDead) {
@@ -271,6 +289,27 @@ export class Game {
             if (p.life <= 0) {
                 this.particles.splice(i, 1);
             }
+        }
+
+        // Update floating texts
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.update(dt);
+            if (ft.life <= 0) {
+                this.floatingTexts.splice(i, 1);
+            }
+        }
+
+        // Update ambient particles
+        for (let i = 0; i < this.ambientParticles.length; i++) {
+            const ap = this.ambientParticles[i];
+            ap.x += ap.vx * dt;
+            ap.y += ap.vy * dt;
+            // Wrap around
+            if (ap.y < -10) ap.y = this.canvas.height + 10;
+            if (ap.y > this.canvas.height + 10) ap.y = -10;
+            if (ap.x < -10) ap.x = this.canvas.width + 10;
+            if (ap.x > this.canvas.width + 10) ap.x = -10;
         }
 
         // Update projectiles
@@ -446,11 +485,25 @@ export class Game {
             this.targetedWord.draw(this.ctx);
         }
 
+        // --- Ambient Dust ---
+        this.ctx.save();
+        this.ambientParticles.forEach(ap => {
+            this.ctx.globalAlpha = ap.alpha;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(ap.x, ap.y, ap.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.restore();
+
         // --- Projectiles ---
         this.projectiles.forEach(p => p.draw(this.ctx));
 
         // --- Particles ---
         this.particles.forEach(p => p.draw(this.ctx));
+
+        // --- Floating Texts ---
+        this.floatingTexts.forEach(ft => ft.draw(this.ctx));
 
         // --- Blind Overlay ---
         if (this.blindTimer > 0) {
@@ -592,8 +645,9 @@ export class Game {
         this.stats.addScore(1000);
         this.isBossPhase = false;
         this.boss = null;
-        this.audio.playExplosion();
+        this.audio.playLevelUp();
         this.bossesDefeated++;
+        this.floatingTexts.push(new FloatingText("Level Cleared!", this.canvas.width / 2, this.canvas.height / 2, "#ffd700", 48));
 
         if (this.stats.hasSkill('siphon')) {
             this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
@@ -639,6 +693,7 @@ export class Game {
                 this.processKeystroke(this.targetedWord, letter);
             } else {
                 this.stats.recordStroke(false);
+                this.audio.playErrorSound();
                 this.stats.updateHUD(); // Ensure combo break is visible
             }
         }
@@ -649,7 +704,7 @@ export class Game {
             word.typed += letter;
             word.untyped = word.untyped.slice(1);
             this.stats.recordStroke(true);
-            this.audio.playMagicSpark();
+            this.audio.playTypeSound();
 
             // Spark at typed position
             this.ctx.font = 'bold 32px Cinzel, serif';
@@ -665,6 +720,7 @@ export class Game {
                 this.stats.addScore(word.text.length, true, word.mistakesMade === 0);
                 word.dying = true; // Let the animation play instead of instant splice
                 this.audio.playExplosion();
+                this.floatingTexts.push(new FloatingText(`+${word.text.length * 10}`, word.x, word.y - 15 * word.scale, "#00e5ff", 28));
 
                 // Increase explosion size based on combo
                 const comboBonus = Math.min(this.stats.combo, 50) / 50;
@@ -703,6 +759,7 @@ export class Game {
             }
         } else {
             this.stats.recordStroke(false);
+            this.audio.playErrorSound();
             if (word) word.mistakesMade++;
 
             // Armored words reset on typo!
@@ -712,6 +769,7 @@ export class Game {
                 word.isTargeted = false;
                 this.targetedWord = null;
                 this.audio.playShatter();
+                this.floatingTexts.push(new FloatingText("Armor Repaired!", word.x, word.y - 30, "#a0a0a0", 20));
 
                 // Visual feedback for armor regenerating
                 this.ctx.font = 'bold 32px Cinzel, serif';
@@ -746,14 +804,16 @@ export class Game {
         }
 
         this.audio.playExplosion();
-        this._triggerShake(15, 600);
+        // Massive screen shake for Nova
+        this._triggerShake(30, 800);
 
-        // Flash screen
-        this.ctx.fillStyle = 'rgba(0, 229, 255, 0.8)';
+        // Flash screen intensely
+        this.ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Spawn massive center explosion
-        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 3.0);
+        // Spawn massive center explosion and Shockwave
+        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 5.0);
+        this.particles.push(new Particle(this.canvas.width / 2, this.canvas.height / 2, 'shockwave'));
 
         // Destroy all normal words
         for (let i = this.words.length - 1; i >= 0; i--) {

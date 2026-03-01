@@ -9,6 +9,7 @@ export class Particle {
         const speed = Math.random() * 0.7 + 0.15;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
+        this.curve = (Math.random() - 0.5) * 0.1; // adding slight swerving trajectory
 
         // Lifespan and size
         this.life = 1.0;
@@ -45,6 +46,12 @@ export class Particle {
             this.size += this.expansionRate * (dt / 16);
             this.life -= this.decay * (dt / 16);
         } else {
+            // organic swerve
+            const currentSpeed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            const currentAngle = Math.atan2(this.vy, this.vx);
+            this.vx = Math.cos(currentAngle + this.curve) * currentSpeed;
+            this.vy = Math.sin(currentAngle + this.curve) * currentSpeed;
+
             this.x += this.vx * dt;
             this.y += this.vy * dt;
             this.life -= this.decay;
