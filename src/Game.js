@@ -182,14 +182,25 @@ export class Game {
             this.playerAnimTimer = Math.max(0, this.playerAnimTimer - dt);
         }
 
+        // Update word spawn timer
+        this.spawnTimer += dt;
+        if (this.spawnTimer >= this.spawnInterval) { // Assuming spawnInterval is the correct variable for spawnDelay
+            this.spawnWord();
+            this.spawnTimer = 0;
+        }
+
+        // Visual effect decay
+        if (this.bloodVignetteIntensity > 0) {
+            this.bloodVignetteIntensity = Math.max(0, this.bloodVignetteIntensity - 0.0005 * dt);
+        }
+
+        if (this.blindTimer > 0) {
+            this.blindTimer -= dt;
+        }
+
         // Decay screen shake
         if (this.shakeTimer > 0) {
             this.shakeTimer = Math.max(0, this.shakeTimer - dt);
-        }
-
-        // Blind duration decay
-        if (this.blindTimer > 0) {
-            this.blindTimer = Math.max(0, this.blindTimer - dt);
         }
 
         // Boss Logic
@@ -266,6 +277,7 @@ export class Game {
 
                     // Drop combo on taking damage
                     this.stats.combo = 0;
+                    this.bloodVignetteIntensity = 1.0;
                     this.stats.updateHUD();
                     this.floatingTexts.push(new FloatingText("Hits Taken", wizX, wizY - 120, hitColor, 28));
 
@@ -508,22 +520,23 @@ export class Game {
         // --- Blind Overlay ---
         if (this.blindTimer > 0) {
             this.ctx.save();
-            // Calculate a dark pulsing alpha based on remaining time
-            const blindAlpha = Math.min(0.95, this.blindTimer / 500) * (0.85 + Math.sin(performance.now() / 300) * 0.1);
+            this.ctx.fillStyle = 'rgba(20, 0, 40, 0.95)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
+        }
 
-            // Create a radial gradient that is clear perfectly around the wizard
-            // and pitch black everywhere else
-            const blindGradient = this.ctx.createRadialGradient(
-                wizX, wizY - 30, 40, // clear inner circle around wizard
-                wizX, wizY - 30, 250 // edge of darkness
+        // --- Blood Vignette ---
+        if (this.bloodVignetteIntensity > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = this.bloodVignetteIntensity * 0.5; // Max 50% opacity
+            const vignette = this.ctx.createRadialGradient(
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.2,
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.6
             );
-
-            blindGradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Transparent at center
-            blindGradient.addColorStop(0.5, `rgba(10, 0, 20, ${blindAlpha * 0.8})`);
-            blindGradient.addColorStop(1, `rgba(0, 0, 0, ${blindAlpha})`); // Opaque black outside
-
-            this.ctx.fillStyle = blindGradient;
-            this.ctx.fillRect(-shakeX, -shakeY, this.canvas.width, this.canvas.height);
+            vignette.addColorStop(0, 'transparent');
+            vignette.addColorStop(1, 'rgba(255, 0, 0, 1)');
+            this.ctx.fillStyle = vignette;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.restore();
         }
 
@@ -633,8 +646,7 @@ export class Game {
 
     castBossSpell() {
         // Currently only Blind is implemented. Can add curses here later!
-        const blindDuration = this.stats.hasSkill('vision') ? 2000 : 4000;
-        this.blindTimer = blindDuration; // 2s or 4s of darkness
+        this.receiveAttack('blind');
 
         // Visual indication that Boss casted a spell
         this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#8a2be2', '#4b0082', '#000000'] });
@@ -648,6 +660,9 @@ export class Game {
         this.audio.playLevelUp();
         this.bossesDefeated++;
         this.floatingTexts.push(new FloatingText("Level Cleared!", this.canvas.width / 2, this.canvas.height / 2, "#ffd700", 48));
+
+        // Sabotage trigger
+        if (this.onAttackCast) this.onAttackCast('swarm');
 
         if (this.stats.hasSkill('siphon')) {
             this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
@@ -867,6 +882,23 @@ export class Game {
             p.size = Math.random() * 2 + 1;
             p.isRune = false;
             this.particles.push(p);
+        }
+    }
+
+    receiveAttack(type) {
+        if (!this.isRunning) return;
+
+        if (type === 'blind') {
+            const blindDuration = this.stats.hasSkill('vision') ? 2000 : 4000;
+            this.blindTimer = blindDuration;
+            this.floatingTexts.push(new FloatingText("BLINDED!", this.canvas.width / 2, this.canvas.height / 2, "#d500f9", 48));
+        } else if (type === 'swarm') {
+            this.floatingTexts.push(new FloatingText("SWARM INBOUND!", this.canvas.width / 2, this.canvas.height / 2, "#ff4b4b", 48));
+            for (let i = 0; i < 4; i++) {
+                // Assuming _spawnWord is a helper for spawnWord, or spawnWord can take a type
+                // For now, calling spawnWord directly, it has logic for swarm
+                this.spawnWord();
+            }
         }
     }
 

@@ -880,6 +880,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Mage Duels ─────────────────────────────────────────────────────────────
 
   function openDuelLobby() {
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
     startMenu.style.pointerEvents = 'none';
     startMenu.style.opacity = '0.5';
     startMenu.style.filter = 'blur(4px)';
@@ -913,41 +915,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     duelSecondsLeft = 90;
     duelOpponentLastState = null;
 
-    // Close lobby, show game HUD
+    // Dimension shift immediately
+    document.body.classList.add('duel-dimension');
+
+    // Close lobby, hide library dashboard, show game HUD
     duelLobbyMenu.classList.remove('active');
     duelLobbyMenu.classList.add('hidden');
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
     duelHud.classList.remove('hidden');
     duelOppName.innerText = opponentName;
 
     // Override game over: in duel mode, declare the local player lost
     game.onGameOver = () => endDuel(false);
 
-    // Start the underlying game in Normal difficulty
-    game.start(difficultySelect.value || 'normal');
-    hud.classList.remove('hidden');
+    // Sync Sabotage Events
+    game.onAttackCast = (type) => {
+      if (duel) duel.broadcastAttack(type);
 
-    // Broadcast loop: send local state every 500ms
-    duelBroadcastInterval = setInterval(() => {
-      if (!duelActive || !duel) return;
-      duel.broadcast({
-        score: game.stats.score,
-        wpm: game.stats.getWPM(),
-        barriers: game.stats.lives,
-        status: 'alive'
-      });
-    }, 500);
+      const announcement = document.createElement('div');
+      announcement.innerText = `CAST ${type.toUpperCase()} ON ${opponentName}!`;
+      announcement.style.position = 'absolute';
+      announcement.style.top = '30%';
+      announcement.style.left = '50%';
+      announcement.style.transform = 'translate(-50%, -50%)';
+      announcement.style.color = '#ffd700';
+      announcement.style.fontSize = '2rem';
+      announcement.style.fontWeight = 'bold';
+      announcement.style.textShadow = '0 0 10px #ffd700';
+      announcement.style.pointerEvents = 'none';
+      announcement.style.zIndex = '1000';
+      announcement.style.animation = 'floatUpFade 2s forwards';
+      document.getElementById('game-container').appendChild(announcement);
+      setTimeout(() => announcement.remove(), 2000);
+    };
 
-    // Countdown timer
-    updateDuelTimerDisplay();
-    duelTimerInterval = setInterval(() => {
-      duelSecondsLeft--;
-      updateDuelTimerDisplay();
-      if (duelSecondsLeft <= 0) {
-        clearInterval(duelTimerInterval);
-        // Time's up — whoever has the highest score wins
-        const myScore = game.stats.score;
-        const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
-        endDuel(myScore >= oppScore);
+    if (duel) {
+      duel.onOpponentAttack = (type) => {
+        game.receiveAttack(type);
+      };
+    }
+
+    // 3.. 2.. 1.. FIGHT overlay
+    const countdownOverlay = document.createElement('div');
+    countdownOverlay.style.position = 'absolute';
+    countdownOverlay.style.inset = '0';
+    countdownOverlay.style.display = 'flex';
+    countdownOverlay.style.alignItems = 'center';
+    countdownOverlay.style.justifyContent = 'center';
+    countdownOverlay.style.background = 'rgba(0,0,0,0.7)';
+    countdownOverlay.style.zIndex = '2000';
+    document.getElementById('game-container').appendChild(countdownOverlay);
+
+    const countdownText = document.createElement('h1');
+    countdownText.style.fontSize = '8rem';
+    countdownText.style.color = '#fff';
+    countdownText.style.textShadow = '0 0 30px #29b6f6';
+    countdownOverlay.appendChild(countdownText);
+
+    let count = 3;
+    countdownText.innerText = count;
+
+    const countInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        countdownText.innerText = count;
+      } else if (count === 0) {
+        countdownText.innerText = 'FIGHT!';
+        countdownText.style.color = '#ff4b4b';
+        countdownText.style.textShadow = '0 0 40px #ff4b4b';
+      } else {
+        clearInterval(countInterval);
+        countdownOverlay.remove();
+
+        // --- START THE REAL MATCH HERE ---
+        game.start(difficultySelect.value || 'normal');
+        hud.classList.remove('hidden');
+
+        // Broadcast loop: send local state every 500ms
+        duelBroadcastInterval = setInterval(() => {
+          if (!duelActive || !duel) return;
+          duel.broadcast({
+            score: game.stats.score,
+            wpm: game.stats.getWPM(),
+            barriers: game.stats.lives,
+            status: 'alive'
+          });
+        }, 500);
+
+        // Countdown timer
+        updateDuelTimerDisplay();
+        duelTimerInterval = setInterval(() => {
+          duelSecondsLeft--;
+          updateDuelTimerDisplay();
+          if (duelSecondsLeft <= 0) {
+            clearInterval(duelTimerInterval);
+            // Time's up — whoever has the highest score wins
+            const myScore = game.stats.score;
+            const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
+            endDuel(myScore >= oppScore);
+          }
+        }, 1000);
       }
     }, 1000);
   }
@@ -976,7 +1044,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       duel = null;
     }
 
-    // Hide game UI
+    // Hide game UI & revert dimensions
+    document.body.classList.remove('duel-dimension');
     hud.classList.add('hidden');
     duelHud.classList.add('hidden');
 
@@ -1028,10 +1097,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     duel.onOpponentUpdate = (state) => {
+      const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
       duelOpponentLastState = state;
       duelOppScore.innerText = state.score ?? 0;
       duelOppWpm.innerText = state.wpm ?? 0;
       duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.barriers < prevBarriers) {
+        duelOppBarriers.style.animation = 'none';
+        void duelOppBarriers.offsetWidth; // trigger reflow
+        duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
+      }
       if (state.status === 'dead') endDuel(true);
     };
 
@@ -1056,10 +1131,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     duel = new Duel(supabase, game.stats.mageName);
 
     duel.onOpponentUpdate = (state) => {
+      const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
       duelOpponentLastState = state;
       duelOppScore.innerText = state.score ?? 0;
       duelOppWpm.innerText = state.wpm ?? 0;
       duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.barriers < prevBarriers) {
+        duelOppBarriers.style.animation = 'none';
+        void duelOppBarriers.offsetWidth; // trigger reflow
+        duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
+      }
       if (state.status === 'dead') endDuel(true);
     };
 

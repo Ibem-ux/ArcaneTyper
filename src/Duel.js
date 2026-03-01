@@ -19,6 +19,7 @@ export class Duel {
 
         // Callbacks
         this.onOpponentUpdate = null;   // (opponentState) => void
+        this.onOpponentAttack = null;   // (type) => void
         this.onOpponentJoined = null;   // () => void
         this.onOpponentLeft = null;     // () => void
     }
@@ -78,6 +79,13 @@ export class Duel {
             }
         });
 
+        // Listen for attacks
+        this.channel.on('broadcast', { event: 'attack' }, ({ payload }) => {
+            if (payload.player !== this.playerName && this.onOpponentAttack) {
+                this.onOpponentAttack(payload.type);
+            }
+        });
+
         // Presence tracking: detect when opponent joins or leaves
         this.channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
             if (key !== this.playerName && this.onOpponentJoined) {
@@ -108,6 +116,19 @@ export class Duel {
             type: 'broadcast',
             event: 'state',
             payload: { player: this.playerName, ...payload }
+        });
+    }
+
+    /**
+     * Broadcast an interactive sabotage event to the opponent.
+     * @param {string} type - e.g. 'blind', 'swarm'
+     */
+    broadcastAttack(type) {
+        if (!this.channel) return;
+        this.channel.send({
+            type: 'broadcast',
+            event: 'attack',
+            payload: { player: this.playerName, type }
         });
     }
 

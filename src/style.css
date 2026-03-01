@@ -34,6 +34,11 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  transition: background 1s ease;
+}
+
+body.duel-dimension {
+  background: radial-gradient(circle at center top, #3a0006 0%, #0a0001 100%);
 }
 
 #app {
@@ -59,6 +64,11 @@ body {
   opacity: 0.15;
   pointer-events: none;
   animation: floatUp 25s linear infinite;
+  transition: background-image 1s ease;
+}
+
+body.duel-dimension #app::before {
+  background-image: radial-gradient(rgba(255, 75, 75, 0.4) 1px, transparent 1px);
 }
 
 @keyframes floatUp {
@@ -1341,5 +1351,42 @@ h2 {
 
   50% {
     opacity: 0.4;
+  }
+}
+
+@keyframes floatUpFade {
+  0% {
+    transform: translate(-50%, -50%);
+    opacity: 0;
+  }
+
+  10% {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
+
+  80% {
+    transform: translate(-50%, -80%);
+    opacity: 1;
+    text-shadow: 0 0 20px #ffd700;
+  }
+
+  100% {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+  }
+}
+
+@keyframes damageFlash {
+  0% {
+    color: #ff4b4b;
+    text-shadow: 0 0 20px #ff4b4b;
+    transform: scale(1.4);
+  }
+
+  100% {
+    color: #d500f9;
+    text-shadow: 0 0 10px rgba(213, 0, 249, 0.4);
+    transform: scale(1);
   }
 }
