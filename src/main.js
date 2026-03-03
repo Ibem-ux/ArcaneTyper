@@ -231,6 +231,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const profileUsernameUI = document.getElementById('profile-username');
   const profileClassUI = document.getElementById('profile-class');
 
+  // Magical Toast Container
+  const toastContainer = document.getElementById('toast-container');
+
+  // Guest UI
+  const ccGuestBtn = document.getElementById('cc-guest-btn');
+  const ccGuestCancelMode = document.getElementById('cc-guest-cancel-mode');
+
   let pendingStats = null;
   let pendingScribeStats = null;
 
@@ -239,12 +246,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   let duelBroadcastInterval = null;
   let duelTimerInterval = null;
   let duelSecondsLeft = 90;
-  let duelOpponentLastState = null;
   let duelActive = false;
+
+  // Global State
+  let isGuest = false;
 
   // ── Authentication & Initialization ───────────────────────────────────────
 
   let isLoginMode = true;
+  let isGuestMode = false;
+
+  function showMagicalToast(message, duration = 4000) {
+    if (!toastContainer) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'magical-toast';
+    toast.innerHTML = message;
+
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after duration
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      // Remove from DOM after transition finishes
+      setTimeout(() => {
+        if (toastContainer.contains(toast)) {
+          toastContainer.removeChild(toast);
+        }
+      }, 500);
+    }, duration);
+  }
 
   async function checkSession() {
     startMenu.classList.add('hidden');
@@ -255,6 +286,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!game.stats.mageName) {
         showCharacterCreation();
       } else {
+        const mageAvatarBg = document.getElementById('background-mage');
+        if (mageAvatarBg) {
+          mageAvatarBg.addEventListener('click', async () => {
+            if (!isGuest) {
+              try {
+                if (supabase) {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session) {
+                    profileUsernameUI.innerText = session.user.email;
+                    profileClassUI.innerText = session.user.user_metadata?.discipline || 'Scholar';
+                  }
+                }
+              } catch (e) { console.warn("Supabase auth check failed."); }
+            } else {
+              profileUsernameUI.innerText = "Wandering Guest";
+              profileClassUI.innerText = "None (Unenrolled)";
+            }
+
+            profileNickname.innerText = game.stats.mageName || "Unknown Mage";
+
+            startMenu.classList.remove('active');
+            startMenu.classList.add('hidden');
+            profileMenu.classList.remove('hidden');
+            profileMenu.classList.add('active');
+          });
+        }
         startMenu.classList.remove('hidden');
         startMenu.classList.add('active');
       }
@@ -334,12 +391,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // --- GUEST UI FLOW ---
+  if (ccGuestBtn && ccGuestCancelMode) {
+    ccGuestBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      isGuestMode = true;
+      ccErrorMsg.innerText = '';
+
+      ccTitle.innerText = "GUEST ACCESS";
+      ccSubtitle.innerText = "Provide a temporary Mage Title.";
+
+      // Hide login/register fields
+      ccUsernameLabel.parentElement.style.display = 'none'; // username/email field
+      ccEmailContainer.style.display = 'none';
+      ccPassword.parentElement.parentElement.style.display = 'none'; // password field
+      ccClassContainer.style.display = 'none';
+
+      // Show only nickname field
+      ccNicknameContainer.style.display = 'flex';
+      ccName.placeholder = "e.g. Wandering Scribe";
+
+      ccCreateBtn.innerText = "ENTER AS GUEST";
+      ccGuestBtn.style.display = 'none';
+      ccToggleMode.style.display = 'none';
+      ccGuestCancelMode.style.display = 'block';
+    });
+
+    ccGuestCancelMode.addEventListener('click', (e) => {
+      e.preventDefault();
+      isGuestMode = false;
+      ccErrorMsg.innerText = '';
+
+      // Revert to login mode UI
+      isLoginMode = true;
+      ccTitle.innerText = "MAGE RECOGNITION";
+      ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
+
+      ccUsernameLabel.parentElement.style.display = 'flex';
+      ccPassword.parentElement.parentElement.style.display = 'flex';
+      ccNicknameContainer.style.display = 'none';
+      ccEmailContainer.style.display = 'none';
+      ccClassContainer.style.display = 'none';
+
+      ccCreateBtn.innerText = "ENTER LIBRARY";
+      ccGuestBtn.style.display = 'block';
+      ccToggleMode.style.display = 'block';
+      ccGuestCancelMode.style.display = 'none';
+    });
+  }
+
   ccCreateBtn.addEventListener('click', async () => {
     const username = ccUsername.value.trim().toLowerCase();
     const displayName = ccName.value.trim();
     const password = ccPassword ? ccPassword.value : '';
     const discipline = ccClass ? ccClass.value : 'Scholar';
 
+    // Handle Guest Bypass
+    if (isGuestMode) {
+      if (!displayName) {
+        if (ccErrorMsg) ccErrorMsg.innerText = "A Guest must provide a temporary Title.";
+        return;
+      }
+      isGuest = true;
+      game.stats.mageName = "Guest " + displayName;
+      game.stats.saveProgression();
+
+      ccErrorMsg.innerText = '';
+      ccMenu.classList.add('hidden');
+      ccMenu.classList.remove('active');
+      startMenu.classList.remove('hidden');
+      startMenu.classList.add('active');
+      return;
+    }
+
+    // Standard Auth Flow
     if (!username) {
       if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must have a True Name (Login ID).";
       return;
@@ -364,8 +489,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       ccCreateBtn.disabled = true;
-      const fakeEmail = `${username}@gmail.com`;
-
       if (isLoginMode) {
         // LOGIN
         // If the username contains an '@', they entered their email directly. Use it.
@@ -502,7 +625,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mobileInput.focus();
   }
 
-  function startPractice() {
+  function startPractice(skipFocus = false) {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
 
@@ -519,15 +642,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mode = scribeModeSelect.value;
     const duration = parseInt(scribeDurationSelect.value, 10);
 
-    // Show/hide timer
+    // Show/hide timer element and the associated duration dropdown
     const isTimed = mode === 'timed';
     scribeTimerContainer.classList.toggle('hidden', !isTimed);
+    scribeDurationSelect.classList.toggle('hidden', !isTimed);
 
     scribe.start(mode, duration);
 
-    // Focus invisible input to trigger mobile keyboard
-    mobileInput.value = '';
-    mobileInput.focus();
+    // Focus invisible input to trigger mobile keyboard, 
+    // but skip it if we're just refreshing settings via dropdown
+    if (!skipFocus && typeof skipFocus !== 'object') {
+      mobileInput.value = '';
+      mobileInput.focus();
+    }
   }
 
   function quitPractice() {
@@ -768,9 +895,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       startMenu.classList.add('active');
     });
   }
-  practiceBtn.addEventListener('click', startPractice);
+  practiceBtn.addEventListener('click', () => startPractice());
   practiceReturnBtn.addEventListener('click', quitPractice);
-  practiceRetryBtn.addEventListener('click', startPractice);
+  practiceRetryBtn.addEventListener('click', () => startPractice());
+
+  scribeModeSelect.addEventListener('change', () => {
+    // Dynamically toggle the UI elements without completely restarting until they start typing
+    const isTimed = scribeModeSelect.value === 'timed';
+    scribeTimerContainer.classList.toggle('hidden', !isTimed);
+    scribeDurationSelect.classList.toggle('hidden', !isTimed);
+
+    // Only restart the trial if we're actively viewing the menu
+    if (practiceUi.classList.contains('active')) {
+      startPractice(true);
+    }
+  });
+
+  scribeDurationSelect.addEventListener('change', () => {
+    if (practiceUi.classList.contains('active')) {
+      startPractice(true);
+    }
+  });
+
   forfeitBtn.addEventListener('click', () => {
     // Instantly drain lives and trigger game over logic
     game.stats.lives = 0;
@@ -782,6 +928,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     leaderboardMenu.classList.add('hidden');
     startMenu.classList.remove('hidden');
     startMenu.classList.add('active');
+
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '';
+    startMenu.style.filter = '';
   });
 
   // Profile Listeners
@@ -830,15 +980,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     profileMenu.classList.add('hidden');
     startMenu.classList.remove('hidden');
     startMenu.classList.add('active');
+
+    // Safety check: ensure main menu isn't blurred or locked
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '';
+    startMenu.style.filter = '';
   });
 
   logoutBtn.addEventListener('click', async () => {
-    if (supabase) {
+    if (supabase && !isGuest) {
       await supabase.auth.signOut();
     }
     // Clear local profile reference so they are prompted to login again
     game.stats.mageName = "";
+    localStorage.removeItem('typerMaster_mageName'); // Explicitly wipe — saveProgression only writes if truthy
     game.stats.saveProgression();
+
+    // Reset guest status
+    isGuest = false;
 
     profileMenu.classList.remove('active');
     profileMenu.classList.add('hidden');
@@ -854,8 +1013,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     ccUsername.placeholder = "e.g. mage@library.com";
     ccCreateBtn.innerText = "ENTER LIBRARY";
     ccToggleMode.innerText = "I need to register a new Mage Card.";
-    ccUsername.value = '';
-    ccName.value = '';
     ccUsername.value = '';
     ccName.value = '';
     if (ccEmail) ccEmail.value = '';
@@ -876,6 +1033,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Workshop Listeners
   workshopBtn.addEventListener('click', () => {
+    if (isGuest) {
+      showMagicalToast("The Workshop requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to unlock upgrades.</span>");
+      return;
+    }
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
     workshopMenu.classList.remove('hidden');
@@ -888,18 +1049,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     workshopMenu.classList.add('hidden');
     startMenu.classList.remove('hidden');
     startMenu.classList.add('active');
+
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '';
+    startMenu.style.filter = '';
   });
 
   // ── Mage Duels ─────────────────────────────────────────────────────────────
 
   function openDuelLobby() {
-    startMenu.classList.remove('hidden');
-    startMenu.classList.add('active');
     startMenu.style.pointerEvents = 'none';
     startMenu.style.opacity = '0.5';
     startMenu.style.filter = 'blur(4px)';
 
-    duelLobbyMenu.classList.remove('hidden');
     // Using a setTimeout allows display: flex to apply before we trigger the CSS transition
     setTimeout(() => {
       duelLobbyMenu.classList.add('active');
@@ -910,17 +1072,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     duelLobbyError.innerText = '';
   }
 
+  // Duel button on Start Menu
+  const duelMageSilhouette = document.getElementById('duel-mage');
+  if (duelMageSilhouette) {
+    duelMageSilhouette.addEventListener('click', () => {
+      if (isGuest) {
+        showMagicalToast("The Arena requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to duel other mages.</span>");
+        return;
+      }
+      if (!supabase) {
+        showMagicalToast("The Arena requires a Supabase connection.<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please configure your environment variables.</span>");
+        return;
+      }
+      startMenu.classList.remove('active');
+      startMenu.classList.add('hidden');
+      duelLobbyMenu.classList.remove('hidden');
+      openDuelLobby();
+    });
+  }
   function closeDuelLobby() {
     if (duel) { duel.disconnect(); duel = null; }
     startMenu.style.pointerEvents = 'auto';
-    startMenu.style.opacity = '1';
-    startMenu.style.filter = 'none';
+    startMenu.style.opacity = '';
+    startMenu.style.filter = '';
 
     duelLobbyMenu.classList.remove('active');
-    // Wait for slide out animation
-    setTimeout(() => {
-      duelLobbyMenu.classList.add('hidden');
-    }, 500);
+    duelLobbyMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
   }
 
   function startDuel(opponentName) {
@@ -1050,6 +1229,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Stop underlying game if still running
     if (game.isRunning) game.stop();
 
+    // Save highscore and XP — normally done by triggerGameOver, but duel
+    // ends the game directly via stop(), so we must save manually here.
+    game.stats.saveHighScore();
+
     // Broadcast defeat/victory to opponent
     if (duel) {
       duel.broadcast({ status: isWinner ? 'won' : 'dead', score: game.stats.score });
@@ -1103,10 +1286,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     duel = new Duel(supabase, game.stats.mageName);
 
     duel.onOpponentJoined = () => {
-      // Read opponent name from the presence state at the moment they join
+      // Read the opponent's display name from the presence payload
       const state = duel.channel.presenceState();
-      const opponentKey = Object.keys(state).find(k => k !== game.stats.mageName);
-      startDuel(opponentKey || 'Unknown Mage');
+      const opponentPresenceKey = Object.keys(state).find(k => k !== duel.presenceKey);
+      let opponentName = 'Unknown Mage';
+      if (opponentPresenceKey) {
+        const presences = state[opponentPresenceKey];
+        opponentName = presences?.[0]?.player_name || 'Unknown Mage';
+      }
+      startDuel(opponentName);
     };
 
     duel.onOpponentUpdate = (state) => {
@@ -1121,6 +1309,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
       }
       if (state.status === 'dead') endDuel(true);
+    };
+
+    duel.onOpponentLeft = () => {
+      if (duelActive) endDuel(true); // If opponent disconnects mid-lobby, host wins
     };
 
     const code = await duel.create();
@@ -1267,6 +1459,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   window.addEventListener('keydown', (e) => {
+    // Dismiss any active magical toasts instantly
+    if (e.key === 'Escape' && toastContainer && toastContainer.children.length > 0) {
+      toastContainer.innerHTML = '';
+      return;
+    }
+
+    // If the Duel Lobby is active, Escape closes it and unblurs the dashboard
+    if (e.key === 'Escape' && duelLobbyMenu.classList.contains('active')) {
+      closeDuelLobby();
+      return;
+    }
+
     if (scribe.isRunning) {
       if (e.key === 'Escape') {
         quitPractice();
@@ -1286,8 +1490,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Ensure mobile keyboard stays open or re-opens if they tap the screen while playing
   document.addEventListener('touchstart', (e) => {
-    // Only intercept if we are actively playing and NOT touching a UI button
-    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+    // Only intercept if we are actively playing and NOT touching a UI button or dropdown
+    const ignoreTags = ['BUTTON', 'SELECT', 'OPTION'];
+    if ((game.isRunning || scribe.isRunning) && !ignoreTags.includes(e.target.tagName)) {
       // Small timeout helps bypass iOS Safari's aggressive focus blocking
       setTimeout(() => {
         mobileInput.focus();
@@ -1296,7 +1501,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.addEventListener('click', (e) => {
-    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+    const ignoreTags = ['BUTTON', 'SELECT', 'OPTION'];
+    if ((game.isRunning || scribe.isRunning) && !ignoreTags.includes(e.target.tagName)) {
       mobileInput.focus();
     }
   });

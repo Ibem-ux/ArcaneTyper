@@ -19,8 +19,8 @@ export class Boss {
         const elements = {
             'fire': { hp: 4, speed: 2000, color: '#ff4500', aura: '#ff8c00' },
             'ice': { hp: 6, speed: 4500, color: '#00ffff', aura: '#e0ffff' },
-            'thunder': { hp: 3, speed: 1500, color: '#ffd700', aura: '#ffffba' },
-            'dark': { hp: 5, speed: 3000, color: '#8a2be2', aura: '#4b0082' }
+            'lightning': { hp: 3, speed: 1500, color: '#ffd700', aura: '#ffffba' },
+            'void': { hp: 5, speed: 3000, color: '#8a2be2', aura: '#4b0082' }
         };
 
         const config = elements[this.elementType] || elements['fire'];

@@ -43,17 +43,24 @@ export class Leaderboard {
         const d = this._local[difficulty];
         if (!d) return;
 
-        d.score.push({ ...entry });
-        d.wpm.push({ ...entry });
-        if (entry.score > 500) d.accuracy.push({ ...entry });
+        // Deduplicate by name: keep only the best entry per player per category
+        const dedupe = (list, field) => {
+            const existing = list.findIndex(e => e.name === entry.name);
+            if (existing !== -1) {
+                if (entry[field] > list[existing][field]) {
+                    list.splice(existing, 1); // Remove old \u2014 will re-insert below
+                } else {
+                    return; // Existing entry is better, skip
+                }
+            }
+            list.push({ ...entry });
+            list.sort((a, b) => b[field] - a[field]);
+            if (list.length > 10) list.pop();
+        };
 
-        d.score.sort((a, b) => b.score - a.score || b.wpm - a.wpm);
-        d.wpm.sort((a, b) => b.wpm - a.wpm || b.score - a.score);
-        d.accuracy.sort((a, b) => b.accuracy - a.accuracy || b.wpm - a.wpm);
-
-        d.score = d.score.slice(0, 10);
-        d.wpm = d.wpm.slice(0, 10);
-        d.accuracy = d.accuracy.slice(0, 10);
+        dedupe(d.score, 'score');
+        dedupe(d.wpm, 'wpm');
+        if (entry.score > 500) dedupe(d.accuracy, 'accuracy');
 
         this._saveLocal();
     }

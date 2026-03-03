@@ -232,18 +232,6 @@ export class Word {
         ctx.restore();
     }
 
-    typeLetter(letter) {
-        if (this.untyped[0] === letter) {
-            this.typed += letter;
-            this.untyped = this.untyped.slice(1);
-            return true;
-        }
-        return false;
-    }
-
-    isCompleted() {
-        return this.untyped.length === 0;
-    }
 }
 
 Word.ELEMENTS = {

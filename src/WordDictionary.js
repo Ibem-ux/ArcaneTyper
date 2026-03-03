@@ -11,10 +11,38 @@ export const wordList = {
     "rend", "slay", "fume", "smite", "quell", "blaze", "haze", "flow",
     "tide", "gust", "husk", "core", "root", "thorn", "vex", "lash",
     "omen", "brim", "pulse", "fade", "sift", "coil", "grim", "howl",
-    // New batch
     "leap", "scry", "bard", "seer", "pact", "lair", "shard", "relic",
     "crypt", "dirge", "glyph", "haunt", "knell", "lurk", "spawn", "totem",
-    "truce", "valor", "wrath", "yield", "zest", "ache", "blot", "bray"
+    "truce", "valor", "wrath", "yield", "zest", "ache", "blot", "bray",
+    // New batch
+    "bode", "brow", "burn", "cage", "cane", "cave", "curb", "dire",
+    "disk", "dove", "dusk", "envy", "fell", "fern", "fist", "flaw",
+    "flux", "foil", "ford", "fowl", "fray", "gash", "gasp", "gate",
+    "gaze", "gild", "gill", "glut", "gore", "gory", "hail", "hale",
+    "halt", "harm", "hawk", "heal", "heap", "heed", "helm", "herb",
+    "herd", "hewn", "hide", "high", "hire", "hoar", "hold", "hook",
+    "hope", "horn", "hulk", "hunt", "hymn", "idle", "jade", "jest",
+    "keen", "kill", "kind", "kite", "knot", "lamb", "lamp", "land",
+    "land", "lure", "maul", "maze", "meal", "meat", "meek", "mere",
+    "mild", "moat", "mock", "molt", "mudd", "nail", "neck", "node",
+    "numb", "opal", "orb", "outs", "pale", "palm", "park", "part",
+    "path", "pawn", "peak", "peer", "peel", "pier", "pile", "pine",
+    "plan", "plea", "plot", "ploy", "plume", "plumb", "pour", "pray",
+    "prey", "prop", "pure", "rage", "rail", "rain", "rake", "rank",
+    "rash", "rasp", "rave", "read", "realm", "reap", "reef", "rein",
+    "rely", "rest", "ring", "rise", "roam", "roar", "robe", "rode",
+    "ruin", "rule", "ruse", "rust", "seal", "seek", "shed", "shin",
+    "sire", "slab", "slat", "slip", "slow", "smear", "snap", "soar",
+    "span", "spar", "spot", "spur", "stab", "stain", "stalk", "step",
+    "stem", "sting", "stop", "strap", "stub", "stun", "suck", "sulk",
+    "sung", "sunk", "swap", "tall", "tame", "tang", "tare", "taut",
+    "tear", "tell", "tend", "term", "test", "thin", "thorn", "toll",
+    "torn", "toil", "toss", "tour", "trap", "trek", "trim", "trip",
+    "trod", "true", "turf", "turn", "tusk", "twin", "type", "urge",
+    "vain", "vast", "veer", "vile", "vine", "vow", "wail", "wake",
+    "walk", "wall", "wane", "warm", "warn", "warp", "wave", "weak",
+    "weal", "weal", "weld", "well", "wend", "whim", "whip", "whirl",
+    "wily", "wipe", "wire", "woe", "wolf", "worn", "wove", "writ"
   ],
   medium: [
     // Core arcane
@@ -106,7 +134,25 @@ export const wordList = {
     "thaumaturgical", "catastrophization", "interdimensional",
     "hyperventilation", "inconquerable", "all-encompassing",
     "runic-annihilation", "void-transmutation", "soul-incineration",
-    "star-annihilation", "spirit-inversion", "cosmic-obliteration"
+    "star-annihilation", "spirit-inversion", "cosmic-obliteration",
+    // New batch 4
+    "consciousness", "constellations", "counterclockwise", "crystallization",
+    "decomposition", "defenestration", "deliberation", "deterioration",
+    "differentiation", "dilapidation", "dimensionality", "disembodiment",
+    "disequilibrium", "disintegration", "documentation", "electromagnetic",
+    "emancipation", "encapsulation", "enlightenment", "extinguishment",
+    "hallucinations", "immateriality", "impersonation", "incorporation",
+    "indestructible", "indistinguishable", "infallibility", "inflammation",
+    "interplanetary", "invulnerability", "irrationality", "irreversible",
+    "juxtaposition", "manifestation", "materialization", "metamorphosis",
+    "millennial-wrath", "misappropriation", "misconceptions", "multiverse",
+    "mystification", "naturalization", "overestimation", "personification",
+    "precipitation", "predetermination", "predisposition", "proclamation",
+    "reconfiguration", "reconsolidation", "recrimination", "redistribution",
+    "reincarnation", "reinforcement", "reinterpretation", "reinvigoration",
+    "representation", "responsibility", "resuscitation", "spiritualization",
+    "standardization", "subordination", "substantiation", "supersaturation",
+    "teleportation", "transformation", "translucence", "unconstrained"
   ],
   paragraphs: [
     "in the ancient days before the sundering of the realms, mages did not cast spells so much as they spoke to the fundamental forces of the world. fire was a tempestuous companion that required coaxing, and water was a stubborn friend that only yielded to the most patient of voices. to be a sorcerer was to be a diplomat to the elements themselves.",
@@ -117,7 +163,37 @@ export const wordList = {
 
     "when the sky turned crimson and the stars began to fall like burning tears, the high council realized their hubris. they had attempted to bind a creature from beyond the veil, a being of pure thought and malevolence. now, the very fabric of reality was tearing at the seams, and only a unified incantation could seal the breach before the world was consumed.",
 
-    "to forge a staves of true power, one must gather the heartwood of an ironbark tree struck by lightning, the core of a fallen star, and the willing tear of a dragon. once assembled, the artifact must be submerged in the waters of the abyssal depth for a full lunar cycle, absorbing the quiet crushing pressure of the deep dark."
+    "to forge a staff of true power, one must gather the heartwood of an ironbark tree struck by lightning, the core of a fallen star, and the willing tear of a dragon. once assembled, the artifact must be submerged in the waters of the abyssal depth for a full lunar cycle, absorbing the quiet crushing pressure of the deep dark.",
+
+    "the apprentice's first lesson was not how to cast a spell, but how to listen. in the silence between heartbeats, one can hear the hum of dormant mana threading through stone and soil like luminous roots. the great mages of antiquity called this the world's breath, and they built their towers above the places where it exhaled most powerfully.",
+
+    "dragons do not breathe fire in the way a bellows blows air. rather, they crystallize the ambient mana around them and then shatter it, converting potential energy into heat and light at a rate that would destroy a lesser creature. this is why a dragonborn heir can sometimes manifest flames at birth, before their body has learned to regulate the process.",
+
+    "the runes carved into the floor of the duel chamber were not decorative. each mark was a compressed equation, a piece of frozen logic that would unfold in microseconds the moment the contest began. a skilled arcanist could read the room like a strategic map, knowing in advance which spells would be amplified and which would dissolve harmlessly against the ambient suppression fields.",
+
+    "in the age of the mage wars, a single letter sent between rival towers could carry three separate invisible spells. the first blessed the ink so it could not be forged. the second cursed the parchment to crumble if exposed to hostile eyes. the third was the most elegant, quietly redirecting the letter back to its sender if the recipient's heart rate suggested deception.",
+
+    "the void is not empty. apprentices learn this truth quickly, and often painfully. every scrap of energy expelled into nothingness is absorbed by whatever waits in the dark between the stars, and it is patient. those who draw too greedily from the void find that something invariably draws back, and it does not return what it takes without demanding something in exchange.",
+
+    "the first tome in the restricted collection is wrapped in chains that are not physical. a scholar touching it will feel a creeping certainty that they have forgotten something vitally important, a memory that retreats like smoke whenever they reach for it. it is the book's first and simplest defense, designed to make the curious doubt whether they have the right key at all.",
+
+    "healing magic is frequently misunderstood by those who have not studied it. it does not restore what was lost so much as it accelerates the body's own intention to repair itself. a deep wound that would take months to scar can be encouraged to close in minutes, but the mana cost scales with the severity of the trauma, and a battlefield healer must budget their reserves with the discipline of a general.",
+
+    "the spectral library on the seventeenth plane exists in a state of permanent midnight. its shelves are infinite and its books are made of solidified whispers, the recorded thoughts of long-dead scholars pressed flat and bound between covers of compressed shadow. to read them, one must close their eyes and allow the words to be spoken directly into memory.",
+
+    "summoning a familiar is not simply a matter of casting the right words in the right order. the creature that answers must choose to answer. most mages spend years broadcasting a silent invitation into the adjacent planes, and many never receive a reply. those who do find that the bond forged is not one of master and servant, but of two different kinds of lonely finding each other.",
+
+    "the enchanter paused above the locket, needle of crystallized mana poised. the woman waiting had paid in memories rather than coin, and the enchanter could feel the weight of them in her palm, warm and slightly sorrow-tinted. she began to embroider the spell into the silver surface, each stitch a syllable, each loop of light a clause in a contract written against forgetting.",
+
+    "no one is certain when written language and magical inscription diverged. some scholars argue they were never the same thing, that every primitive mark on stone was already an attempt to make permanence out of the impermanent, which is the root purpose of any ward. if this theory is correct, then every library is a kind of fortress, and every reader an aspiring mage.",
+
+    "the catastrophe did not announce itself. it arrived on a clear morning while the city was eating breakfast, as a perfectly spherical silence that expanded outward from the old observatory at the speed of thought. birds stopped singing. bells stopped ringing. and then, slowly, the gravity that had always been a law became merely a suggestion to those standing within the circle.",
+
+    "a master calligrapher of the runic schools can transcribe an emergency ward onto any surface in under four seconds. in the field, this means teeth, eyelids, or the inside of a boot if the situation demands it. the ward will not be beautiful, and it will not last more than an hour, but it will hold against a moderate offensive incantation and that is frequently enough.",
+
+    "the monastery on the stormpeaks teaches a form of combat magic that involves no gestures and no spoken words. monks spend their first decade simply learning to hold a charged spell static within their bodies without releasing it, a practice they compare to cupping a live ember in your hand without flinching. by the end of their training, they can detonate twelve separate spells simultaneously simply by exhaling.",
+
+    "every spell leaves a scar in the local fabric of reality. most are microscopic, healing over within seconds. but a battlefield that has seen significant magical combat develops a kind of chronic wound in the aether, a permanent tremor that sensitive practitioners can feel decades later. the eldest sites of ancient conflict hum like struck glass, and wildflowers that grow there sometimes bloom in colors that have no name."
   ]
 };
 

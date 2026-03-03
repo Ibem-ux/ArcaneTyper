@@ -13,6 +13,8 @@ export class Duel {
     constructor(supabase, playerName) {
         this.supabase = supabase;
         this.playerName = playerName || 'Anonymous Mage';
+        // Use a UUID as the unique presence key — display names are not guaranteed unique
+        this.presenceKey = crypto.randomUUID();
         this.roomCode = null;
         this.channel = null;
         this.isHost = false;
@@ -59,19 +61,22 @@ export class Duel {
 
         return new Promise((resolve) => {
             let found = false;
-            
-            // Listen for the first sync event to find host's name
+
+            // Listen for the first sync event to find the host's display name
             const onSync = () => {
                 if (found) return;
                 const state = this.channel.presenceState();
-                const hostKey = Object.keys(state).find(k => k !== this.playerName);
-                if (hostKey) {
+                // Find opponent by presence key (UUID), get their display name from payload
+                const opponentKey = Object.keys(state).find(k => k !== this.presenceKey);
+                if (opponentKey) {
                     found = true;
-                    resolve(hostKey);
+                    const presences = state[opponentKey];
+                    const opponentName = presences?.[0]?.player_name || 'Unknown Mage';
+                    resolve(opponentName);
                 }
             };
             this.channel.on('presence', { event: 'sync' }, onSync);
-            
+
             // Timeout after 1.5 seconds if sync doesn't return host
             setTimeout(() => {
                 if (!found) {
@@ -94,39 +99,43 @@ export class Duel {
         }
 
         this.channel = this.supabase.channel(channelName, {
-            config: { presence: { key: this.playerName } }
+            config: { presence: { key: this.presenceKey } }
         });
 
         // Listen for real-time game state broadcasts
         this.channel.on('broadcast', { event: 'state' }, ({ payload }) => {
-            if (payload.player !== this.playerName && this.onOpponentUpdate) {
+            if (payload.player_key !== this.presenceKey && this.onOpponentUpdate) {
                 this.onOpponentUpdate(payload);
             }
         });
 
         // Listen for attacks
         this.channel.on('broadcast', { event: 'attack' }, ({ payload }) => {
-            if (payload.player !== this.playerName && this.onOpponentAttack) {
+            if (payload.player_key !== this.presenceKey && this.onOpponentAttack) {
                 this.onOpponentAttack(payload.type);
             }
         });
 
         // Presence tracking: detect when opponent joins or leaves
-        this.channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
-            if (key !== this.playerName && this.onOpponentJoined) {
+        this.channel.on('presence', { event: 'join' }, ({ key }) => {
+            if (key !== this.presenceKey && this.onOpponentJoined) {
                 this.onOpponentJoined();
             }
         });
 
-        this.channel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-            if (key !== this.playerName && this.onOpponentLeft) {
+        this.channel.on('presence', { event: 'leave' }, ({ key }) => {
+            if (key !== this.presenceKey && this.onOpponentLeft) {
                 this.onOpponentLeft();
             }
         });
 
         await this.channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await this.channel.track({ online_at: new Date().toISOString() });
+                // Track with UUID key; include display name in the payload
+                await this.channel.track({
+                    player_name: this.playerName,
+                    online_at: new Date().toISOString()
+                });
             }
         });
     }
@@ -140,7 +149,7 @@ export class Duel {
         this.channel.send({
             type: 'broadcast',
             event: 'state',
-            payload: { player: this.playerName, ...payload }
+            payload: { player_key: this.presenceKey, player_name: this.playerName, ...payload }
         });
     }
 
@@ -153,7 +162,7 @@ export class Duel {
         this.channel.send({
             type: 'broadcast',
             event: 'attack',
-            payload: { player: this.playerName, type }
+            payload: { player_key: this.presenceKey, type }
         });
     }
 

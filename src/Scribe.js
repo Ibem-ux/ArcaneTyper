@@ -65,7 +65,7 @@ export class Scribe {
 
         // Generate initial word set
         if (this.mode === 'timed') {
-            this._appendWords(80); // start with a big buffer
+            this._appendParagraphs(2); // start with a big buffer (2 paragraphs)
             this._updateTimerDisplay();
         } else {
             const paragraph = this.dictionary.getRandomParagraph();
@@ -90,11 +90,15 @@ export class Scribe {
 
     // ─── Word / DOM helpers ───────────────────────────────────────────────────
 
-    _appendWords(count) {
+    _appendParagraphs(count = 1) {
         for (let i = 0; i < count; i++) {
-            const w = this.dictionary.getScribeWord();
-            this.words.push(w);
-            this._renderWord(w, this.words.length - 1);
+            const paragraph = this.dictionary.getRandomParagraph();
+            const paraWords = paragraph.split(' ');
+
+            paraWords.forEach(w => {
+                this.words.push(w);
+                this._renderWord(w, this.words.length - 1);
+            });
         }
     }
 
@@ -230,9 +234,9 @@ export class Scribe {
         this.currentWordIdx++;
         this.currentLetterIdx = 0;
 
-        // In timed mode, append more words when buffer is running low
+        // In timed mode, append more paragraphs when buffer is running low
         if (this.mode === 'timed' && this.currentWordIdx > this.words.length - 30) {
-            this._appendWords(40);
+            this._appendParagraphs(1);
         }
 
         // In words mode: finished all words?

@@ -119,6 +119,56 @@ export class AudioController {
         });
     }
 
+    playComboSound(combo) {
+        this._resumeContext();
+        const t = this.ctx.currentTime;
+
+        // Define melodies based on combo tier (10 = low, 50 = epic)
+        let rootFreq = 440; // A4
+        let notes = [];
+
+        // All tiers will use pure 'sine' waves now to avoid any "static" or "buzzing" sound.
+        // We simulate a magical harp or bell chime glissando.
+        if (combo >= 50) {
+            rootFreq = 880; // A5
+            notes = [1, 1.25, 1.5, 1.666, 2.0]; // Ethereal 5-note sweep (Major pentatonic)
+        } else if (combo >= 40) {
+            rootFreq = 659.25; // E5
+            notes = [1, 1.25, 1.5, 2.0]; // Major chord sweep
+        } else if (combo >= 30) {
+            rootFreq = 523.25; // C5
+            notes = [1, 1.25, 1.5]; // Major triad
+        } else if (combo >= 20) {
+            rootFreq = 440; // A4
+            notes = [1, 1.2]; // Minor third (A4 -> C5)
+        } else if (combo >= 10) {
+            rootFreq = 329.63; // E4
+            notes = [1]; // Single smooth chime
+        } else {
+            return;
+        }
+
+        notes.forEach((ratio, index) => {
+            const noteTime = t + index * 0.1; // Slightly slower, more deliberate chime
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine'; // Pure, clean bell sound
+            osc.frequency.setValueAtTime(rootFreq * ratio, noteTime);
+
+            // Envelope: fast attack, long smooth decay (bell-like)
+            gain.gain.setValueAtTime(0, noteTime);
+            gain.gain.linearRampToValueAtTime(0.4, noteTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, noteTime + 0.6);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+
+            osc.start(noteTime);
+            osc.stop(noteTime + 1.0); // Let the chime ring out
+        });
+    }
+
     playExplosion() {
         this._resumeContext();
         const t = this.ctx.currentTime;
@@ -222,30 +272,26 @@ export class AudioController {
         this.bgFilter.connect(this.bgGain);
         this.bgGain.connect(this.masterGain);
 
-        // --- Tension Arpeggiator Layer ---
-        // A fast, sequencer-like synth that fades in at high combo
+        // --- Tension Layer (Smooth Choir/Ethereal instead of Sawtooth/Square) ---
+        // A high, smooth sine wave that fades in at high combo to create tension without buzzing
         this.tensionOsc = this.ctx.createOscillator();
-        this.tensionOsc.type = 'sawtooth';
-        this.tensionOsc.frequency.value = 110; // Base note A2
+        this.tensionOsc.type = 'sine';
+        this.tensionOsc.frequency.value = 880; // High A5 note
 
         this.tensionGain = this.ctx.createGain();
         this.tensionGain.gain.setValueAtTime(0, t); // Starts completely silent
 
-        // Create a fast square LFO to gate the oscillator (creating a sequencer effect)
+        // Slow tremolo effect to make it shimmer instead of gating rapidly
         this.tensionLfo = this.ctx.createOscillator();
-        this.tensionLfo.type = 'square';
-        this.tensionLfo.frequency.value = 8; // 8th notes (16th notes depending on tempo, ~480BPM equivalent)
+        this.tensionLfo.type = 'sine';
+        this.tensionLfo.frequency.value = 4; // 4Hz gentle wobble
 
-        const lfoAmp = this.ctx.createGain();
-        lfoAmp.gain.value = 1;
+        const tremoloGain = this.ctx.createGain();
+        tremoloGain.gain.value = 0.5; // Base level
+        this.tensionLfo.connect(tremoloGain.gain);
 
-        // Apply LFO to a separate gain node to gate the volume rapidly
-        const tensionGate = this.ctx.createGain();
-        tensionGate.gain.value = 0; // Base level
-        this.tensionLfo.connect(tensionGate.gain); // Rapidly modulate from 0 to 1
-
-        this.tensionOsc.connect(tensionGate);
-        tensionGate.connect(this.tensionGain);
+        this.tensionOsc.connect(tremoloGain);
+        tremoloGain.connect(this.tensionGain);
         this.tensionGain.connect(this.masterGain);
 
         this.tensionOsc.start(t);
@@ -285,13 +331,9 @@ export class AudioController {
         // Clamp intensity 0.0 to 1.0 (e.g. maxes out at 50 combo)
         this.currentIntensity = Math.min(1.0, Math.max(0, intensity));
 
-        // As intensity increases:
-        // 1. Pitch increases slightly (tension)
-        // 2. Filter opens up (more high frequencies/buzz)
-
         const t = this.ctx.currentTime;
-        const targetFreq = 55 + (this.currentIntensity * 20); // 55Hz up to 75Hz
-        const targetFilterFreq = 400 + (this.currentIntensity * 1600); // 400 up to 2000Hz (much buzzier)
+        const targetFreq = 55 + (this.currentIntensity * 10); // Slight pitch up (55Hz -> 65Hz)
+        const targetFilterFreq = 400 + (this.currentIntensity * 600); // 400 up to 1000Hz (softer than before to avoid buzz)
 
         if (this.bgOscillator1) {
             this.bgOscillator1.frequency.linearRampToValueAtTime(targetFreq, t + 0.5);
@@ -301,17 +343,15 @@ export class AudioController {
         }
 
         if (this.bgFilter) {
-            // Cancel previous filter automations except the LFO which is connected to filter.frequency
-            // We just set the base value
             this.bgFilter.frequency.setTargetAtTime(targetFilterFreq, t, 0.5);
         }
 
-        // Fade in the tension arpeggiator only when intensity is high (> 0.5, meaning combo > 25)
+        // Fade in the shimmering tension layer gracefully
         if (this.tensionGain) {
             let tensionVolume = 0;
-            if (this.currentIntensity > 0.5) {
-                // Map the upper 50% of intensity to 0.0 -> 0.15 volume
-                tensionVolume = (this.currentIntensity - 0.5) * 2 * 0.15;
+            if (this.currentIntensity > 0.4) {
+                // Map the upper 60% of intensity to volume
+                tensionVolume = (this.currentIntensity - 0.4) * 1.5 * 0.1;
             }
             this.tensionGain.gain.setTargetAtTime(tensionVolume, t, 0.5);
         }

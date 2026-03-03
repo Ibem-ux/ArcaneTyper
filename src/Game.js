@@ -25,6 +25,7 @@ export class Game {
         this.lastTime = 0;
         this.spawnTimer = 0;
         this.spawnInterval = 3000; // ms
+        this.lastHudUpdate = 0; // For throttled HUD updates
 
         this.isRunning = false;
         this.animationFrameId = null;
@@ -154,12 +155,14 @@ export class Game {
         this.update(dt);
         this.draw();
 
-        if (Math.random() < 0.1) {
-            this.stats.updateHUD();
-        }
-
         if (this.isRunning) {
             this.animationFrameId = requestAnimationFrame((t) => this.gameLoop(t));
+        }
+
+        // Throttled HUD update: only update DOM stats every 200ms
+        if (currentTime - this.lastHudUpdate >= 200) {
+            this.stats.updateHUD();
+            this.lastHudUpdate = currentTime;
         }
     }
 
@@ -273,6 +276,23 @@ export class Game {
                     this.bloodVignetteIntensity = 1.0;
                     this.stats.updateHUD();
                     this.floatingTexts.push(new FloatingText("Hits Taken", wizX, wizY - 120, hitColor, 28));
+
+                    const isDead = this.stats.loseLife();
+                    if (isDead) {
+                        this.triggerGameOver();
+                    }
+                } else if (word.y > this.canvas.height + 150) {
+                    // Check if word drifted completely off-screen (missed)
+                    this.words.splice(i, 1);
+                    if (word === this.targetedWord) this.targetedWord = null;
+
+                    // Treat missed words as damage as well (optional, but typical for typing defense games)
+                    this.audio.playShatter();
+                    this._triggerShake(5, 200);
+                    this.stats.combo = 0;
+                    this.bloodVignetteIntensity = 1.0;
+                    this.stats.updateHUD();
+                    this.floatingTexts.push(new FloatingText("Word Missed", wizX, wizY - 120, hitColor, 28));
 
                     const isDead = this.stats.loseLife();
                     if (isDead) {
@@ -635,7 +655,7 @@ export class Game {
     startBossPhase() {
         this.isBossPhase = true;
 
-        const elements = ['fire', 'ice', 'thunder', 'dark'];
+        const elements = ['fire', 'ice', 'lightning', 'void'];
         const randomElement = elements[Math.floor(Math.random() * elements.length)];
         const difficultyScale = 1 + (this.bossesDefeated * 0.25);
 
@@ -905,11 +925,32 @@ export class Game {
         } else if (type === 'swarm') {
             this.floatingTexts.push(new FloatingText("SWARM INBOUND!", this.canvas.width / 2, this.canvas.height / 2, "#ff4b4b", 48));
             for (let i = 0; i < 4; i++) {
-                // Assuming _spawnWord is a helper for spawnWord, or spawnWord can take a type
-                // For now, calling spawnWord directly, it has logic for swarm
-                this.spawnWord();
+                // Use _spawnSingleWord so the boss counter is NOT incremented
+                this._spawnSingleWord();
             }
         }
+    }
+
+    // Internal helper: spawn one word without touching the boss spawnCount.
+    // Used for swarm attacks so opponent-triggered swarms don't accidentally
+    // push the counter over the boss threshold.
+    _spawnSingleWord() {
+        if (!this.isRunning) return;
+        const targetX = this.canvas.width / 2;
+        const targetY = this.canvas.height;
+        const margin = 100;
+        let bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
+        for (let tries = 0; tries < 5; tries++) {
+            let tooClose = false;
+            for (const w of this.words) {
+                if (w.y < 150 && Math.abs(w.x - bestX) < 180) { tooClose = true; break; }
+            }
+            if (!tooClose) break;
+            bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
+        }
+        const text = this.dictionary.getRandomWord('easy');
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant: 'swarm', x: bestX, y: -50 });
+        this.words.push(newWord);
     }
 
     triggerGameOver() {

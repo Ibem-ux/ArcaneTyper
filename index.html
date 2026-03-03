@@ -716,11 +716,17 @@
 
           <button id="cc-create-btn" class="primary-btn" style="margin-top: 0.2rem; width: 100%; padding: 8px;">ENTER
             LIBRARY</button>
+          <button id="cc-guest-btn" class="primary-btn"
+            style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--accent-primary); color: var(--accent-primary); margin-top: -5px;">PLAY
+            AS GUEST</button>
         </div>
 
         <a href="#" id="cc-toggle-mode"
           style="color: var(--accent-primary); text-align: center; font-size: 0.95rem; text-decoration: none; margin-top: 15px; padding: 8px; transition: color 0.3s ease; text-shadow: 0 0 5px var(--accent-glow);">I
           need to register a new Mage Card.</a>
+        <a href="#" id="cc-guest-cancel-mode"
+          style="color: var(--text-muted); text-align: center; font-size: 0.95rem; text-decoration: none; margin-top: 5px; padding: 8px; transition: color 0.3s ease; display: none;">Return
+          to Login</a>
       </div>
 
       <!-- Mage Profile Menu -->
@@ -772,6 +778,12 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Magical Toast Notifications -->
+      <div id="toast-container"
+        style="position: absolute; top: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 1000; pointer-events: none;">
+        <!-- Toasts injected here -->
       </div>
 
       <!-- The Game Canvas -->

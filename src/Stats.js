@@ -73,6 +73,13 @@ export class Stats {
             if (this.combo > this.maxCombo) this.maxCombo = this.combo;
             // Record timestamp for rolling window calculation
             this._keystrokeTimestamps.push(Date.now());
+
+            // Play milestone jingle when hitting a multiplier cut-off (10, 20, 30, 40, 50)
+            if (this.combo === 10 || this.combo === 20 || this.combo === 30 || this.combo === 40 || this.combo === 50) {
+                if (window.game && window.game.audio) {
+                    window.game.audio.playComboSound(this.combo);
+                }
+            }
         } else {
             this.combo = 0;
         }
