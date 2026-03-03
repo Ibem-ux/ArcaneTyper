@@ -182,13 +182,6 @@ export class Game {
             this.playerAnimTimer = Math.max(0, this.playerAnimTimer - dt);
         }
 
-        // Update word spawn timer
-        this.spawnTimer += dt;
-        if (this.spawnTimer >= this.spawnInterval) { // Assuming spawnInterval is the correct variable for spawnDelay
-            this.spawnWord();
-            this.spawnTimer = 0;
-        }
-
         // Visual effect decay
         if (this.bloodVignetteIntensity > 0) {
             this.bloodVignetteIntensity = Math.max(0, this.bloodVignetteIntensity - 0.0005 * dt);
