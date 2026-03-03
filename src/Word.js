@@ -43,7 +43,10 @@ export class Word {
         }
 
         // Position
-        if (this.isBossAttack) {
+        if (typeof options.x !== 'undefined') {
+            this.x = options.x;
+            this.y = typeof options.y !== 'undefined' ? options.y : -50;
+        } else if (this.isBossAttack) {
             this.x = canvasWidth / 2;
             this.y = 100; // Boss's targetY
         } else {

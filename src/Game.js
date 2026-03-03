@@ -618,7 +618,24 @@ export class Game {
         if (rand < 0.1) variant = 'armored';
         else if (rand < 0.2) variant = 'ghost';
 
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant });
+        const margin = 100;
+        let bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
+
+        // Try up to 10 times to find a spawn X that is far enough from recent words (top of the screen)
+        for (let tries = 0; tries < 10; tries++) {
+            let tooClose = false;
+            for (const w of this.words) {
+                // Only care about words recently spawned (y < 150)
+                if (w.y < 150 && Math.abs(w.x - bestX) < 180) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) break;
+            bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
+        }
+
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50 });
         this.words.push(newWord);
     }
 
