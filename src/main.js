@@ -527,805 +527,808 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Focus invisible input to trigger mobile keyboard
     mobileInput.value = '';
-    function quitPractice() {
-      scribe.stop();
-      game.stop();
-      game.reset(); // Clear underlying canvas elements
+    mobileInput.focus();
+  }
 
-      // Clear the physical canvas frame to remove static drawings
-      const ctx = game.canvas.getContext('2d');
-      ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+  function quitPractice() {
+    scribe.stop();
+    game.stop();
+    game.reset(); // Clear underlying canvas elements
 
-      practiceUi.classList.remove('active');
-      practiceUi.classList.add('hidden');
-      document.getElementById('practice-results').classList.add('hidden');
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-    }
+    // Clear the physical canvas frame to remove static drawings
+    const ctx = game.canvas.getContext('2d');
+    ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
 
-    // ── Game Over ─────────────────────────────────────────────────────────────
+    practiceUi.classList.remove('active');
+    practiceUi.classList.add('hidden');
+    document.getElementById('practice-results').classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  }
 
-    game.onGameOver = async (finalStats) => {
-      hud.classList.add('hidden');
+  // ── Game Over ─────────────────────────────────────────────────────────────
 
-      goScore.innerText = finalStats.score;
-      goWords.innerText = finalStats.wordsTyped;
-      goWpm.innerText = finalStats.getSessionWPM();
-      goAcc.innerText = finalStats.getAccuracy() + '%';
+  game.onGameOver = async (finalStats) => {
+    hud.classList.add('hidden');
 
-      gameOverMenu.classList.remove('hidden');
-      gameOverMenu.classList.add('active');
-      updateMenuStats();
+    goScore.innerText = finalStats.score;
+    goWords.innerText = finalStats.wordsTyped;
+    goWpm.innerText = finalStats.getSessionWPM();
+    goAcc.innerText = finalStats.getAccuracy() + '%';
 
-      const qualifies = await leaderboard.isTop10(
+    gameOverMenu.classList.remove('hidden');
+    gameOverMenu.classList.add('active');
+    updateMenuStats();
+
+    const qualifies = await leaderboard.isTop10(
+      game.difficulty,
+      finalStats.score,
+      finalStats.getSessionWPM(),
+      finalStats.getAccuracy()
+    );
+
+    // Bypassing prompt: auto submit if they have a profile
+    if (qualifies && game.stats.mageName) {
+      await leaderboard.addScore(
         game.difficulty,
+        game.stats.mageName,
         finalStats.score,
         finalStats.getSessionWPM(),
         finalStats.getAccuracy()
       );
+    }
 
-      // Bypassing prompt: auto submit if they have a profile
-      if (qualifies && game.stats.mageName) {
-        await leaderboard.addScore(
-          game.difficulty,
-          game.stats.mageName,
-          finalStats.score,
-          finalStats.getSessionWPM(),
-          finalStats.getAccuracy()
-        );
-      }
+    restartBtn.classList.remove('hidden');
+  };
 
-      restartBtn.classList.remove('hidden');
-    };
+  // ── Scribe Trial ──────────────────────────────────────────────────────────
 
-    // ── Scribe Trial ──────────────────────────────────────────────────────────
+  scribe.onTrialComplete = async (wpm, rawWpm, accuracy, consistency, wpmSamples) => {
+    // Update accuracy display (already has % in the span)
+    const resAcc = document.getElementById('practice-res-acc');
+    const resConsistency = document.getElementById('practice-res-consistency');
+    if (resAcc) resAcc.innerText = accuracy + '%';
+    if (resConsistency) resConsistency.innerText = consistency + '%';
 
-    scribe.onTrialComplete = async (wpm, rawWpm, accuracy, consistency, wpmSamples) => {
-      // Update accuracy display (already has % in the span)
-      const resAcc = document.getElementById('practice-res-acc');
-      const resConsistency = document.getElementById('practice-res-consistency');
-      if (resAcc) resAcc.innerText = accuracy + '%';
-      if (resConsistency) resConsistency.innerText = consistency + '%';
+    // Draw WPM graph
+    drawWpmGraph(wpmSamples);
 
-      // Draw WPM graph
-      drawWpmGraph(wpmSamples);
+    const scribeScore = Math.floor(wpm * (accuracy / 100));
 
-      const scribeScore = Math.floor(wpm * (accuracy / 100));
+    const qualifies = await leaderboard.isTop10('scribe', scribeScore, wpm, accuracy);
 
-      const qualifies = await leaderboard.isTop10('scribe', scribeScore, wpm, accuracy);
+    // Auto submit to leaderboard since we have a mage name
+    if (qualifies && game.stats.mageName) {
+      await leaderboard.addScore('scribe', game.stats.mageName, scribeScore, wpm, accuracy);
+    }
 
-      // Auto submit to leaderboard since we have a mage name
-      if (qualifies && game.stats.mageName) {
-        await leaderboard.addScore('scribe', game.stats.mageName, scribeScore, wpm, accuracy);
-      }
+    scribeHighscoreForm.classList.add('hidden');
+    practiceRetryBtn.classList.remove('hidden');
+    practiceReturnBtn.classList.remove('hidden');
+  };
 
-      scribeHighscoreForm.classList.add('hidden');
-      practiceRetryBtn.classList.remove('hidden');
-      practiceReturnBtn.classList.remove('hidden');
-    };
+  // ── WPM Graph ─────────────────────────────────────────────────────────────
 
-    // ── WPM Graph ─────────────────────────────────────────────────────────────
+  function drawWpmGraph(samples) {
+    if (!wpmGraphCanvas) return;
+    const ctx = wpmGraphCanvas.getContext('2d');
+    const W = wpmGraphCanvas.width;
+    const H = wpmGraphCanvas.height;
 
-    function drawWpmGraph(samples) {
-      if (!wpmGraphCanvas) return;
-      const ctx = wpmGraphCanvas.getContext('2d');
-      const W = wpmGraphCanvas.width;
-      const H = wpmGraphCanvas.height;
+    ctx.clearRect(0, 0, W, H);
 
-      ctx.clearRect(0, 0, W, H);
+    // Background
+    ctx.fillStyle = 'rgba(15,10,20,0.9)';
+    ctx.fillRect(0, 0, W, H);
 
-      // Background
-      ctx.fillStyle = 'rgba(15,10,20,0.9)';
-      ctx.fillRect(0, 0, W, H);
-
-      if (!samples || samples.length < 2) {
-        ctx.fillStyle = 'rgba(184,146,176,0.4)';
-        ctx.font = '12px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('Not enough data', W / 2, H / 2);
-        return;
-      }
-
-      const pad = { top: 12, right: 12, bottom: 22, left: 36 };
-      const chartW = W - pad.left - pad.right;
-      const chartH = H - pad.top - pad.bottom;
-
-      const maxWpm = Math.max(...samples, 10);
-      const minWpm = Math.max(0, Math.min(...samples) - 5);
-
-      const xStep = chartW / (samples.length - 1);
-      const toX = (i) => pad.left + i * xStep;
-      const toY = (v) => pad.top + chartH - ((v - minWpm) / (maxWpm - minWpm || 1)) * chartH;
-
-      // Grid lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 1;
-      for (let g = 0; g <= 4; g++) {
-        const y = pad.top + (g / 4) * chartH;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(pad.left + chartW, y);
-        ctx.stroke();
-
-        const label = Math.round(maxWpm - (g / 4) * (maxWpm - minWpm));
-        ctx.fillStyle = 'rgba(184,146,176,0.6)';
-        ctx.font = '9px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillText(label, pad.left - 4, y + 3);
-      }
-
-      // X-axis: time labels
-      ctx.fillStyle = 'rgba(184,146,176,0.5)';
-      ctx.font = '9px monospace';
+    if (!samples || samples.length < 2) {
+      ctx.fillStyle = 'rgba(184,146,176,0.4)';
+      ctx.font = '12px monospace';
       ctx.textAlign = 'center';
-      const labelEvery = Math.ceil(samples.length / 6);
-      samples.forEach((_, i) => {
-        if (i % labelEvery === 0 || i === samples.length - 1) {
-          ctx.fillText(`${i + 1}s`, toX(i), H - 4);
-        }
-      });
+      ctx.fillText('Not enough data', W / 2, H / 2);
+      return;
+    }
 
-      // Gradient fill under the line
-      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
-      grad.addColorStop(0, 'rgba(255,215,0,0.25)');
-      grad.addColorStop(1, 'rgba(255,215,0,0)');
-      ctx.beginPath();
-      ctx.moveTo(toX(0), toY(samples[0]));
-      samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
-      ctx.lineTo(toX(samples.length - 1), pad.top + chartH);
-      ctx.lineTo(toX(0), pad.top + chartH);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
+    const pad = { top: 12, right: 12, bottom: 22, left: 36 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
 
-      // Gold line
+    const maxWpm = Math.max(...samples, 10);
+    const minWpm = Math.max(0, Math.min(...samples) - 5);
+
+    const xStep = chartW / (samples.length - 1);
+    const toX = (i) => pad.left + i * xStep;
+    const toY = (v) => pad.top + chartH - ((v - minWpm) / (maxWpm - minWpm || 1)) * chartH;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 4; g++) {
+      const y = pad.top + (g / 4) * chartH;
       ctx.beginPath();
-      ctx.moveTo(toX(0), toY(samples[0]));
-      samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
-      ctx.strokeStyle = '#ffd700';
-      ctx.lineWidth = 2;
-      ctx.lineJoin = 'round';
-      ctx.shadowColor = 'rgba(255,215,0,0.5)';
-      ctx.shadowBlur = 6;
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(pad.left + chartW, y);
       ctx.stroke();
-      ctx.shadowBlur = 0;
 
-      // Dots at each data point
-      ctx.fillStyle = '#ffd700';
-      samples.forEach((v, i) => {
-        ctx.beginPath();
-        ctx.arc(toX(i), toY(v), 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      const label = Math.round(maxWpm - (g / 4) * (maxWpm - minWpm));
+      ctx.fillStyle = 'rgba(184,146,176,0.6)';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(label, pad.left - 4, y + 3);
     }
 
-    // ── Leaderboard ───────────────────────────────────────────────────────────
-
-    function openLeaderboard(category = 'score', forceDifficulty = null) {
-      startMenu.classList.remove('active');
-      startMenu.classList.add('hidden');
-      leaderboardMenu.classList.remove('hidden');
-      leaderboardMenu.classList.add('active');
-
-      if (forceDifficulty) {
-        leaderboardDifficultyFilter.value = forceDifficulty;
-      } else if (game.difficulty && leaderboardDifficultyFilter.value !== 'scribe') {
-        leaderboardDifficultyFilter.value = game.difficulty;
+    // X-axis: time labels
+    ctx.fillStyle = 'rgba(184,146,176,0.5)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    const labelEvery = Math.ceil(samples.length / 6);
+    samples.forEach((_, i) => {
+      if (i % labelEvery === 0 || i === samples.length - 1) {
+        ctx.fillText(`${i + 1}s`, toX(i), H - 4);
       }
+    });
 
-      renderLeaderboard(category);
+    // Gradient fill under the line
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+    grad.addColorStop(0, 'rgba(255,215,0,0.25)');
+    grad.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(samples[0]));
+    samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
+    ctx.lineTo(toX(samples.length - 1), pad.top + chartH);
+    ctx.lineTo(toX(0), pad.top + chartH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Gold line
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(samples[0]));
+    samples.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(255,215,0,0.5)';
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Dots at each data point
+    ctx.fillStyle = '#ffd700';
+    samples.forEach((v, i) => {
+      ctx.beginPath();
+      ctx.arc(toX(i), toY(v), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // ── Leaderboard ───────────────────────────────────────────────────────────
+
+  function openLeaderboard(category = 'score', forceDifficulty = null) {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    leaderboardMenu.classList.remove('hidden');
+    leaderboardMenu.classList.add('active');
+
+    if (forceDifficulty) {
+      leaderboardDifficultyFilter.value = forceDifficulty;
+    } else if (game.difficulty && leaderboardDifficultyFilter.value !== 'scribe') {
+      leaderboardDifficultyFilter.value = game.difficulty;
     }
 
-    async function renderLeaderboard(category) {
-      tabBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === category);
-      });
+    renderLeaderboard(category);
+  }
 
-      const tbody = document.getElementById('leaderboard-body');
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 1rem;">Loading Hall of Fame...</td></tr>';
+  async function renderLeaderboard(category) {
+    tabBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.category === category);
+    });
 
-      const difficulty = leaderboardDifficultyFilter.value;
-      const scores = await leaderboard.getTopScores(difficulty, category);
+    const tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding: 1rem;">Loading Hall of Fame...</td></tr>';
 
-      tbody.innerHTML = '';
+    const difficulty = leaderboardDifficultyFilter.value;
+    const scores = await leaderboard.getTopScores(difficulty, category);
 
-      if (!scores || scores.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">The Hall of Fame is empty. Create your legacy!</td></tr>';
-        return;
-      }
+    tbody.innerHTML = '';
 
-      scores.forEach((entry, index) => {
-        const tr = document.createElement('tr');
-        const rankClass = index === 0 ? 'top-rank' : '';
-        tr.innerHTML = `
+    if (!scores || scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">The Hall of Fame is empty. Create your legacy!</td></tr>';
+      return;
+    }
+
+    scores.forEach((entry, index) => {
+      const tr = document.createElement('tr');
+      const rankClass = index === 0 ? 'top-rank' : '';
+      tr.innerHTML = `
         <td class="rank-text ${rankClass}">#${index + 1}</td>
         <td class="${rankClass}">${entry.name}</td>
         <td>${entry.score}</td>
         <td>${entry.wpm}</td>
         <td>${entry.accuracy}%</td>
       `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // ── Event Listeners ───────────────────────────────────────────────────────
-
-    startBtn.addEventListener('click', startGame);
-    restartBtn.addEventListener('click', startGame);
-    if (returnDashboardBtn) {
-      returnDashboardBtn.addEventListener('click', () => {
-        gameOverMenu.classList.add('hidden');
-        gameOverMenu.classList.remove('active');
-        startMenu.classList.remove('hidden');
-        startMenu.classList.add('active');
-      });
-    }
-    practiceBtn.addEventListener('click', startPractice);
-    practiceReturnBtn.addEventListener('click', quitPractice);
-    practiceRetryBtn.addEventListener('click', startPractice);
-    forfeitBtn.addEventListener('click', () => {
-      // Instantly drain lives and trigger game over logic
-      game.stats.lives = 0;
-      game.triggerGameOver();
+      tbody.appendChild(tr);
     });
-    openLeaderboardBtn.addEventListener('click', () => openLeaderboard('score'));
-    closeLeaderboardBtn.addEventListener('click', () => {
-      leaderboardMenu.classList.remove('active');
-      leaderboardMenu.classList.add('hidden');
+  }
+
+  // ── Event Listeners ───────────────────────────────────────────────────────
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', startGame);
+  if (returnDashboardBtn) {
+    returnDashboardBtn.addEventListener('click', () => {
+      gameOverMenu.classList.add('hidden');
+      gameOverMenu.classList.remove('active');
       startMenu.classList.remove('hidden');
       startMenu.classList.add('active');
     });
+  }
+  practiceBtn.addEventListener('click', startPractice);
+  practiceReturnBtn.addEventListener('click', quitPractice);
+  practiceRetryBtn.addEventListener('click', startPractice);
+  forfeitBtn.addEventListener('click', () => {
+    // Instantly drain lives and trigger game over logic
+    game.stats.lives = 0;
+    game.triggerGameOver();
+  });
+  openLeaderboardBtn.addEventListener('click', () => openLeaderboard('score'));
+  closeLeaderboardBtn.addEventListener('click', () => {
+    leaderboardMenu.classList.remove('active');
+    leaderboardMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
 
-    // Profile Listeners
-    const backgroundMage = document.getElementById('background-mage');
+  // Profile Listeners
+  const backgroundMage = document.getElementById('background-mage');
 
-    const openProfileHandler = async () => {
-      startMenu.classList.remove('active');
-      startMenu.classList.add('hidden');
+  const openProfileHandler = async () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
 
-      // Populate stats
-      profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
+    // Populate stats
+    profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
 
-      // Try to get username and class from Supabase session
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // First try to use the stored true_name metadata
-          if (session.user.user_metadata && session.user.user_metadata.true_name) {
-            profileUsernameUI.innerText = session.user.user_metadata.true_name;
-          } else if (session.user.email) {
-            // Fallback to legacy email parsing if true_name metadata is missing
-            profileUsernameUI.innerText = session.user.email.split('@')[0];
-          }
-
-          if (session.user.user_metadata && session.user.user_metadata.discipline) {
-            profileClassUI.innerText = session.user.user_metadata.discipline;
-          } else {
-            profileClassUI.innerText = 'The Scholar (Balanced)'; // Legacy default
-          }
+    // Try to get username and class from Supabase session
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // First try to use the stored true_name metadata
+        if (session.user.user_metadata && session.user.user_metadata.true_name) {
+          profileUsernameUI.innerText = session.user.user_metadata.true_name;
+        } else if (session.user.email) {
+          // Fallback to legacy email parsing if true_name metadata is missing
+          profileUsernameUI.innerText = session.user.email.split('@')[0];
         }
-      } else {
-        profileUsernameUI.innerText = 'Local Profile';
-        profileClassUI.innerText = 'The Scholar (Balanced)';
-      }
 
-      profileMenu.classList.remove('hidden');
-      profileMenu.classList.add('active');
+        if (session.user.user_metadata && session.user.user_metadata.discipline) {
+          profileClassUI.innerText = session.user.user_metadata.discipline;
+        } else {
+          profileClassUI.innerText = 'The Scholar (Balanced)'; // Legacy default
+        }
+      }
+    } else {
+      profileUsernameUI.innerText = 'Local Profile';
+      profileClassUI.innerText = 'The Scholar (Balanced)';
+    }
+
+    profileMenu.classList.remove('hidden');
+    profileMenu.classList.add('active');
+  };
+
+  if (backgroundMage) {
+    backgroundMage.addEventListener('click', openProfileHandler);
+  }
+
+  closeProfileBtn.addEventListener('click', () => {
+    profileMenu.classList.remove('active');
+    profileMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    // Clear local profile reference so they are prompted to login again
+    game.stats.mageName = "";
+    game.stats.saveProgression();
+
+    profileMenu.classList.remove('active');
+    profileMenu.classList.add('hidden');
+
+    // reset to login mode visually
+    isLoginMode = true;
+    ccTitle.innerText = "MAGE RECOGNITION";
+    ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
+    ccClassContainer.style.display = 'none';
+    ccNicknameContainer.style.display = 'none';
+    if (ccEmailContainer) ccEmailContainer.style.display = 'none';
+    if (ccUsernameLabel) ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
+    ccUsername.placeholder = "e.g. mage@library.com";
+    ccCreateBtn.innerText = "ENTER LIBRARY";
+    ccToggleMode.innerText = "I need to register a new Mage Card.";
+    ccUsername.value = '';
+    ccName.value = '';
+    ccUsername.value = '';
+    ccName.value = '';
+    if (ccEmail) ccEmail.value = '';
+
+    if (ccPassword) {
+      ccPassword.value = '';
+      ccPassword.type = 'password';
+    }
+    if (togglePasswordBtn) {
+      togglePasswordBtn.classList.remove('revealed');
+      togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
+    }
+    if (ccErrorMsg) ccErrorMsg.innerText = '';
+
+    showCharacterCreation();
+  });
+
+
+  // Workshop Listeners
+  workshopBtn.addEventListener('click', () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    workshopMenu.classList.remove('hidden');
+    workshopMenu.classList.add('active');
+    updateWorkshopUI();
+  });
+
+  closeWorkshopBtn.addEventListener('click', () => {
+    workshopMenu.classList.remove('active');
+    workshopMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  // ── Mage Duels ─────────────────────────────────────────────────────────────
+
+  function openDuelLobby() {
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+    startMenu.style.pointerEvents = 'none';
+    startMenu.style.opacity = '0.5';
+    startMenu.style.filter = 'blur(4px)';
+
+    duelLobbyMenu.classList.remove('hidden');
+    // Using a setTimeout allows display: flex to apply before we trigger the CSS transition
+    setTimeout(() => {
+      duelLobbyMenu.classList.add('active');
+    }, 10);
+
+    duelLobbyIdlePanel.style.display = 'flex';
+    duelLobbyWaitingPanel.style.display = 'none';
+    duelLobbyError.innerText = '';
+  }
+
+  function closeDuelLobby() {
+    if (duel) { duel.disconnect(); duel = null; }
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '1';
+    startMenu.style.filter = 'none';
+
+    duelLobbyMenu.classList.remove('active');
+    // Wait for slide out animation
+    setTimeout(() => {
+      duelLobbyMenu.classList.add('hidden');
+    }, 500);
+  }
+
+  function startDuel(opponentName) {
+    duelActive = true;
+    duelSecondsLeft = 90;
+    duelOpponentLastState = null;
+
+    // Dimension shift immediately
+    document.body.classList.add('duel-dimension');
+
+    // Close lobby, hide library dashboard, show game HUD
+    duelLobbyMenu.classList.remove('active');
+    duelLobbyMenu.classList.add('hidden');
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    duelHud.classList.remove('hidden');
+    duelOppName.innerText = opponentName;
+
+    // Override game over: in duel mode, declare the local player lost
+    game.onGameOver = () => endDuel(false);
+
+    // Sync Sabotage Events
+    game.onAttackCast = (type) => {
+      if (duel) duel.broadcastAttack(type);
+
+      const announcement = document.createElement('div');
+      announcement.innerText = `CAST ${type.toUpperCase()} ON ${opponentName}!`;
+      announcement.style.position = 'absolute';
+      announcement.style.top = '30%';
+      announcement.style.left = '50%';
+      announcement.style.transform = 'translate(-50%, -50%)';
+      announcement.style.color = '#ffd700';
+      announcement.style.fontSize = '2rem';
+      announcement.style.fontWeight = 'bold';
+      announcement.style.textShadow = '0 0 10px #ffd700';
+      announcement.style.pointerEvents = 'none';
+      announcement.style.zIndex = '1000';
+      announcement.style.animation = 'floatUpFade 2s forwards';
+      document.getElementById('game-container').appendChild(announcement);
+      setTimeout(() => announcement.remove(), 2000);
     };
 
-    if (backgroundMage) {
-      backgroundMage.addEventListener('click', openProfileHandler);
+    if (duel) {
+      duel.onOpponentAttack = (type) => {
+        game.receiveAttack(type);
+      };
     }
 
-    closeProfileBtn.addEventListener('click', () => {
-      profileMenu.classList.remove('active');
-      profileMenu.classList.add('hidden');
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
+    // 3.. 2.. 1.. FIGHT overlay
+    const countdownOverlay = document.createElement('div');
+    countdownOverlay.style.position = 'absolute';
+    countdownOverlay.style.inset = '0';
+    countdownOverlay.style.display = 'flex';
+    countdownOverlay.style.alignItems = 'center';
+    countdownOverlay.style.justifyContent = 'center';
+    countdownOverlay.style.background = 'rgba(0,0,0,0.7)';
+    countdownOverlay.style.zIndex = '2000';
+    document.getElementById('game-container').appendChild(countdownOverlay);
+
+    const countdownText = document.createElement('h1');
+    countdownText.style.fontSize = '8rem';
+    countdownText.style.color = '#fff';
+    countdownText.style.textShadow = '0 0 30px #29b6f6';
+    countdownOverlay.appendChild(countdownText);
+
+    let count = 3;
+    countdownText.innerText = count;
+
+    const countInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        countdownText.innerText = count;
+      } else if (count === 0) {
+        countdownText.innerText = 'FIGHT!';
+        countdownText.style.color = '#ff4b4b';
+        countdownText.style.textShadow = '0 0 40px #ff4b4b';
+      } else {
+        clearInterval(countInterval);
+        countdownOverlay.remove();
+
+        // --- START THE REAL MATCH HERE ---
+        game.start(difficultySelect.value || 'normal');
+        hud.classList.remove('hidden');
+
+        // Broadcast loop: send local state every 500ms
+        duelBroadcastInterval = setInterval(() => {
+          if (!duelActive || !duel) return;
+          duel.broadcast({
+            score: game.stats.score,
+            wpm: game.stats.getWPM(),
+            barriers: game.stats.lives,
+            status: 'alive'
+          });
+        }, 500);
+
+        // Countdown timer
+        updateDuelTimerDisplay();
+        duelTimerInterval = setInterval(() => {
+          duelSecondsLeft--;
+          updateDuelTimerDisplay();
+          if (duelSecondsLeft <= 0) {
+            clearInterval(duelTimerInterval);
+            // Time's up — whoever has the highest score wins
+            const myScore = game.stats.score;
+            const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
+            endDuel(myScore >= oppScore);
+          }
+        }, 1000);
+      }
+    }, 1000);
+  }
+
+  function updateDuelTimerDisplay() {
+    const m = Math.floor(duelSecondsLeft / 60);
+    const s = duelSecondsLeft % 60;
+    duelTimerDisplay.innerText = `${m}:${s.toString().padStart(2, '0')}`;
+    duelTimerDisplay.style.color = duelSecondsLeft <= 15 ? '#ff4b4b' : '#29b6f6';
+  }
+
+  function endDuel(isWinner) {
+    if (!duelActive) return;
+    duelActive = false;
+
+    clearInterval(duelBroadcastInterval);
+    clearInterval(duelTimerInterval);
+
+    // Stop underlying game if still running
+    if (game.isRunning) game.stop();
+
+    // Broadcast defeat/victory to opponent
+    if (duel) {
+      duel.broadcast({ status: isWinner ? 'won' : 'dead', score: game.stats.score });
+      duel.disconnect();
+      duel = null;
+    }
+
+    // Hide game UI & revert dimensions
+    document.body.classList.remove('duel-dimension');
+    hud.classList.add('hidden');
+    duelHud.classList.add('hidden');
+
+    // Show result screen
+    const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
+    duelResMyScore.innerText = game.stats.score;
+    duelResOppScore.innerText = oppScore;
+
+    if (isWinner) {
+      duelResultTitle.innerText = '⚔️ VICTORY!';
+      duelResultTitle.style.color = '#ffd700';
+      duelResultSubtitle.innerText = 'You have vanquished your foe!';
+    } else {
+      duelResultTitle.innerText = '💀 DEFEATED';
+      duelResultTitle.style.color = '#ff4b4b';
+      duelResultSubtitle.innerText = 'Your barriers have crumbled...';
+    }
+
+    duelResultMenu.classList.remove('hidden');
+    duelResultMenu.classList.add('active');
+  }
+
+  // Duel button on Start Menu
+  document.getElementById('duel-mage').addEventListener('click', () => {
+    if (!supabase) {
+      alert('Mage Duels require a Supabase connection. Please configure your environment variables.');
+      return;
+    }
+    openDuelLobby();
+  });
+
+  // Close lobby
+  document.getElementById('duel-lobby-close-btn').addEventListener('click', closeDuelLobby);
+
+  // Create room
+  document.getElementById('duel-create-btn').addEventListener('click', async () => {
+    if (!game.stats.mageName) {
+      duelLobbyError.innerText = 'You must be logged in to create a duel.';
+      return;
+    }
+    duelLobbyError.innerText = '';
+    duel = new Duel(supabase, game.stats.mageName);
+
+    duel.onOpponentJoined = () => {
+      // Read opponent name from the presence state at the moment they join
+      const state = duel.channel.presenceState();
+      const opponentKey = Object.keys(state).find(k => k !== game.stats.mageName);
+      startDuel(opponentKey || 'Unknown Mage');
+    };
+
+    duel.onOpponentUpdate = (state) => {
+      const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
+      duelOpponentLastState = state;
+      duelOppScore.innerText = state.score ?? 0;
+      duelOppWpm.innerText = state.wpm ?? 0;
+      duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.barriers < prevBarriers) {
+        duelOppBarriers.style.animation = 'none';
+        void duelOppBarriers.offsetWidth; // trigger reflow
+        duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
+      }
+      if (state.status === 'dead') endDuel(true);
+    };
+
+    const code = await duel.create();
+    duelRoomCodeDisplay.innerText = code;
+    duelLobbyIdlePanel.style.display = 'none';
+    duelLobbyWaitingPanel.style.display = 'flex';
+  });
+
+  // Join room
+  document.getElementById('duel-join-btn').addEventListener('click', async () => {
+    const code = duelRoomInput.value.trim().toUpperCase();
+    if (code.length < 6) {
+      duelLobbyError.innerText = 'Please enter a valid 6-character room code.';
+      return;
+    }
+    if (!game.stats.mageName) {
+      duelLobbyError.innerText = 'You must be logged in to join a duel.';
+      return;
+    }
+    duelLobbyError.innerText = 'Joining room ' + code + '...';
+    duel = new Duel(supabase, game.stats.mageName);
+
+    duel.onOpponentUpdate = (state) => {
+      const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
+      duelOpponentLastState = state;
+      duelOppScore.innerText = state.score ?? 0;
+      duelOppWpm.innerText = state.wpm ?? 0;
+      duelOppBarriers.innerText = state.barriers ?? '?';
+      if (state.barriers < prevBarriers) {
+        duelOppBarriers.style.animation = 'none';
+        void duelOppBarriers.offsetWidth; // trigger reflow
+        duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
+      }
+      if (state.status === 'dead') endDuel(true);
+    };
+
+    duel.onOpponentLeft = () => {
+      if (duelActive) endDuel(true); // If opponent disconnects, local player wins
+    };
+
+    await duel.join(code);
+    duelLobbyError.innerText = '';
+    // Get host's name from presence
+    const presenceState = duel.channel.presenceState();
+    const hostKey = Object.keys(presenceState).find(k => k !== game.stats.mageName);
+    startDuel(hostKey || 'Unknown Mage');
+  });
+
+  // Rematch — re-open lobby
+  document.getElementById('duel-rematch-btn').addEventListener('click', () => {
+    duelResultMenu.classList.remove('active');
+    duelResultMenu.classList.add('hidden');
+    openDuelLobby();
+  });
+
+  // Return to Library from result screen
+  document.getElementById('duel-result-close-btn').addEventListener('click', () => {
+    game.stop();
+    game.reset(); // Clear underlying canvas elements
+
+    // Clear the physical canvas frame to remove static drawings
+    const ctx = game.canvas.getContext('2d');
+    ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+
+    duelResultMenu.classList.remove('active');
+    duelResultMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+
+    // Remove the lobby blur effects from the main menu
+    startMenu.style.pointerEvents = 'auto';
+    startMenu.style.opacity = '1';
+    startMenu.style.filter = 'none';
+
+    updateMenuStats();
+  });
+
+  function updateWorkshopUI() {
+    workshopXp.innerText = game.stats.totalXP;
+    workshopLevel.innerText = game.stats.playerLevel;
+
+    // Update skills
+    skillNodes.forEach(node => {
+      const skillId = node.id.replace('skill-', '').replace('-btn', '');
+      if (game.stats.hasSkill(skillId)) {
+        node.classList.remove('locked');
+        node.classList.add('unlocked');
+      } else {
+        node.classList.remove('unlocked');
+        const cost = parseInt(node.dataset.cost, 10);
+        if (game.stats.totalXP >= cost) {
+          node.classList.remove('locked');
+        } else {
+          node.classList.add('locked');
+        }
+      }
     });
 
-    logoutBtn.addEventListener('click', async () => {
-      if (supabase) {
-        await supabase.auth.signOut();
+    // Update wands
+    wandBtns.forEach(btn => {
+      if (btn.dataset.color === game.stats.wandColor) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
       }
-      // Clear local profile reference so they are prompted to login again
-      game.stats.mageName = "";
-      game.stats.saveProgression();
-
-      profileMenu.classList.remove('active');
-      profileMenu.classList.add('hidden');
-
-      // reset to login mode visually
-      isLoginMode = true;
-      ccTitle.innerText = "MAGE RECOGNITION";
-      ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
-      ccClassContainer.style.display = 'none';
-      ccNicknameContainer.style.display = 'none';
-      if (ccEmailContainer) ccEmailContainer.style.display = 'none';
-      if (ccUsernameLabel) ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
-      ccUsername.placeholder = "e.g. mage@library.com";
-      ccCreateBtn.innerText = "ENTER LIBRARY";
-      ccToggleMode.innerText = "I need to register a new Mage Card.";
-      ccUsername.value = '';
-      ccName.value = '';
-      ccUsername.value = '';
-      ccName.value = '';
-      if (ccEmail) ccEmail.value = '';
-
-      if (ccPassword) {
-        ccPassword.value = '';
-        ccPassword.type = 'password';
-      }
-      if (togglePasswordBtn) {
-        togglePasswordBtn.classList.remove('revealed');
-        togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
-      }
-      if (ccErrorMsg) ccErrorMsg.innerText = '';
-
-      showCharacterCreation();
     });
+  }
 
+  skillNodes.forEach(node => {
+    node.addEventListener('click', () => {
+      const skillId = node.id.replace('skill-', '').replace('-btn', '');
+      if (game.stats.hasSkill(skillId)) return; // Already unlocked
 
-    // Workshop Listeners
-    workshopBtn.addEventListener('click', () => {
-      startMenu.classList.remove('active');
-      startMenu.classList.add('hidden');
-      workshopMenu.classList.remove('hidden');
-      workshopMenu.classList.add('active');
+      const cost = parseInt(node.dataset.cost, 10);
+      if (game.stats.spendXP(cost)) {
+        game.stats.unlockSkill(skillId);
+        updateWorkshopUI();
+
+        // Play purchase sound
+        game.audio.playExplosionSound();
+      }
+    });
+  });
+
+  wandBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const color = btn.dataset.color;
+      game.stats.setWandColor(color);
       updateWorkshopUI();
     });
-
-    closeWorkshopBtn.addEventListener('click', () => {
-      workshopMenu.classList.remove('active');
-      workshopMenu.classList.add('hidden');
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-    });
-
-    // ── Mage Duels ─────────────────────────────────────────────────────────────
-
-    function openDuelLobby() {
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-      startMenu.style.pointerEvents = 'none';
-      startMenu.style.opacity = '0.5';
-      startMenu.style.filter = 'blur(4px)';
-
-      duelLobbyMenu.classList.remove('hidden');
-      // Using a setTimeout allows display: flex to apply before we trigger the CSS transition
-      setTimeout(() => {
-        duelLobbyMenu.classList.add('active');
-      }, 10);
-
-      duelLobbyIdlePanel.style.display = 'flex';
-      duelLobbyWaitingPanel.style.display = 'none';
-      duelLobbyError.innerText = '';
-    }
-
-    function closeDuelLobby() {
-      if (duel) { duel.disconnect(); duel = null; }
-      startMenu.style.pointerEvents = 'auto';
-      startMenu.style.opacity = '1';
-      startMenu.style.filter = 'none';
-
-      duelLobbyMenu.classList.remove('active');
-      // Wait for slide out animation
-      setTimeout(() => {
-        duelLobbyMenu.classList.add('hidden');
-      }, 500);
-    }
-
-    function startDuel(opponentName) {
-      duelActive = true;
-      duelSecondsLeft = 90;
-      duelOpponentLastState = null;
-
-      // Dimension shift immediately
-      document.body.classList.add('duel-dimension');
-
-      // Close lobby, hide library dashboard, show game HUD
-      duelLobbyMenu.classList.remove('active');
-      duelLobbyMenu.classList.add('hidden');
-      startMenu.classList.remove('active');
-      startMenu.classList.add('hidden');
-      duelHud.classList.remove('hidden');
-      duelOppName.innerText = opponentName;
-
-      // Override game over: in duel mode, declare the local player lost
-      game.onGameOver = () => endDuel(false);
-
-      // Sync Sabotage Events
-      game.onAttackCast = (type) => {
-        if (duel) duel.broadcastAttack(type);
-
-        const announcement = document.createElement('div');
-        announcement.innerText = `CAST ${type.toUpperCase()} ON ${opponentName}!`;
-        announcement.style.position = 'absolute';
-        announcement.style.top = '30%';
-        announcement.style.left = '50%';
-        announcement.style.transform = 'translate(-50%, -50%)';
-        announcement.style.color = '#ffd700';
-        announcement.style.fontSize = '2rem';
-        announcement.style.fontWeight = 'bold';
-        announcement.style.textShadow = '0 0 10px #ffd700';
-        announcement.style.pointerEvents = 'none';
-        announcement.style.zIndex = '1000';
-        announcement.style.animation = 'floatUpFade 2s forwards';
-        document.getElementById('game-container').appendChild(announcement);
-        setTimeout(() => announcement.remove(), 2000);
-      };
-
-      if (duel) {
-        duel.onOpponentAttack = (type) => {
-          game.receiveAttack(type);
-        };
-      }
-
-      // 3.. 2.. 1.. FIGHT overlay
-      const countdownOverlay = document.createElement('div');
-      countdownOverlay.style.position = 'absolute';
-      countdownOverlay.style.inset = '0';
-      countdownOverlay.style.display = 'flex';
-      countdownOverlay.style.alignItems = 'center';
-      countdownOverlay.style.justifyContent = 'center';
-      countdownOverlay.style.background = 'rgba(0,0,0,0.7)';
-      countdownOverlay.style.zIndex = '2000';
-      document.getElementById('game-container').appendChild(countdownOverlay);
-
-      const countdownText = document.createElement('h1');
-      countdownText.style.fontSize = '8rem';
-      countdownText.style.color = '#fff';
-      countdownText.style.textShadow = '0 0 30px #29b6f6';
-      countdownOverlay.appendChild(countdownText);
-
-      let count = 3;
-      countdownText.innerText = count;
-
-      const countInterval = setInterval(() => {
-        count--;
-        if (count > 0) {
-          countdownText.innerText = count;
-        } else if (count === 0) {
-          countdownText.innerText = 'FIGHT!';
-          countdownText.style.color = '#ff4b4b';
-          countdownText.style.textShadow = '0 0 40px #ff4b4b';
-        } else {
-          clearInterval(countInterval);
-          countdownOverlay.remove();
-
-          // --- START THE REAL MATCH HERE ---
-          game.start(difficultySelect.value || 'normal');
-          hud.classList.remove('hidden');
-
-          // Broadcast loop: send local state every 500ms
-          duelBroadcastInterval = setInterval(() => {
-            if (!duelActive || !duel) return;
-            duel.broadcast({
-              score: game.stats.score,
-              wpm: game.stats.getWPM(),
-              barriers: game.stats.lives,
-              status: 'alive'
-            });
-          }, 500);
-
-          // Countdown timer
-          updateDuelTimerDisplay();
-          duelTimerInterval = setInterval(() => {
-            duelSecondsLeft--;
-            updateDuelTimerDisplay();
-            if (duelSecondsLeft <= 0) {
-              clearInterval(duelTimerInterval);
-              // Time's up — whoever has the highest score wins
-              const myScore = game.stats.score;
-              const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
-              endDuel(myScore >= oppScore);
-            }
-          }, 1000);
-        }
-      }, 1000);
-    }
-
-    function updateDuelTimerDisplay() {
-      const m = Math.floor(duelSecondsLeft / 60);
-      const s = duelSecondsLeft % 60;
-      duelTimerDisplay.innerText = `${m}:${s.toString().padStart(2, '0')}`;
-      duelTimerDisplay.style.color = duelSecondsLeft <= 15 ? '#ff4b4b' : '#29b6f6';
-    }
-
-    function endDuel(isWinner) {
-      if (!duelActive) return;
-      duelActive = false;
-
-      clearInterval(duelBroadcastInterval);
-      clearInterval(duelTimerInterval);
-
-      // Stop underlying game if still running
-      if (game.isRunning) game.stop();
-
-      // Broadcast defeat/victory to opponent
-      if (duel) {
-        duel.broadcast({ status: isWinner ? 'won' : 'dead', score: game.stats.score });
-        duel.disconnect();
-        duel = null;
-      }
-
-      // Hide game UI & revert dimensions
-      document.body.classList.remove('duel-dimension');
-      hud.classList.add('hidden');
-      duelHud.classList.add('hidden');
-
-      // Show result screen
-      const oppScore = duelOpponentLastState ? duelOpponentLastState.score : 0;
-      duelResMyScore.innerText = game.stats.score;
-      duelResOppScore.innerText = oppScore;
-
-      if (isWinner) {
-        duelResultTitle.innerText = '⚔️ VICTORY!';
-        duelResultTitle.style.color = '#ffd700';
-        duelResultSubtitle.innerText = 'You have vanquished your foe!';
-      } else {
-        duelResultTitle.innerText = '💀 DEFEATED';
-        duelResultTitle.style.color = '#ff4b4b';
-        duelResultSubtitle.innerText = 'Your barriers have crumbled...';
-      }
-
-      duelResultMenu.classList.remove('hidden');
-      duelResultMenu.classList.add('active');
-    }
-
-    // Duel button on Start Menu
-    document.getElementById('duel-mage').addEventListener('click', () => {
-      if (!supabase) {
-        alert('Mage Duels require a Supabase connection. Please configure your environment variables.');
-        return;
-      }
-      openDuelLobby();
-    });
-
-    // Close lobby
-    document.getElementById('duel-lobby-close-btn').addEventListener('click', closeDuelLobby);
-
-    // Create room
-    document.getElementById('duel-create-btn').addEventListener('click', async () => {
-      if (!game.stats.mageName) {
-        duelLobbyError.innerText = 'You must be logged in to create a duel.';
-        return;
-      }
-      duelLobbyError.innerText = '';
-      duel = new Duel(supabase, game.stats.mageName);
-
-      duel.onOpponentJoined = () => {
-        // Read opponent name from the presence state at the moment they join
-        const state = duel.channel.presenceState();
-        const opponentKey = Object.keys(state).find(k => k !== game.stats.mageName);
-        startDuel(opponentKey || 'Unknown Mage');
-      };
-
-      duel.onOpponentUpdate = (state) => {
-        const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
-        duelOpponentLastState = state;
-        duelOppScore.innerText = state.score ?? 0;
-        duelOppWpm.innerText = state.wpm ?? 0;
-        duelOppBarriers.innerText = state.barriers ?? '?';
-        if (state.barriers < prevBarriers) {
-          duelOppBarriers.style.animation = 'none';
-          void duelOppBarriers.offsetWidth; // trigger reflow
-          duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
-        }
-        if (state.status === 'dead') endDuel(true);
-      };
-
-      const code = await duel.create();
-      duelRoomCodeDisplay.innerText = code;
-      duelLobbyIdlePanel.style.display = 'none';
-      duelLobbyWaitingPanel.style.display = 'flex';
-    });
-
-    // Join room
-    document.getElementById('duel-join-btn').addEventListener('click', async () => {
-      const code = duelRoomInput.value.trim().toUpperCase();
-      if (code.length < 6) {
-        duelLobbyError.innerText = 'Please enter a valid 6-character room code.';
-        return;
-      }
-      if (!game.stats.mageName) {
-        duelLobbyError.innerText = 'You must be logged in to join a duel.';
-        return;
-      }
-      duelLobbyError.innerText = 'Joining room ' + code + '...';
-      duel = new Duel(supabase, game.stats.mageName);
-
-      duel.onOpponentUpdate = (state) => {
-        const prevBarriers = duelOpponentLastState ? duelOpponentLastState.barriers : 4;
-        duelOpponentLastState = state;
-        duelOppScore.innerText = state.score ?? 0;
-        duelOppWpm.innerText = state.wpm ?? 0;
-        duelOppBarriers.innerText = state.barriers ?? '?';
-        if (state.barriers < prevBarriers) {
-          duelOppBarriers.style.animation = 'none';
-          void duelOppBarriers.offsetWidth; // trigger reflow
-          duelOppBarriers.style.animation = 'damageFlash 0.5s ease';
-        }
-        if (state.status === 'dead') endDuel(true);
-      };
-
-      duel.onOpponentLeft = () => {
-        if (duelActive) endDuel(true); // If opponent disconnects, local player wins
-      };
-
-      await duel.join(code);
-      duelLobbyError.innerText = '';
-      // Get host's name from presence
-      const presenceState = duel.channel.presenceState();
-      const hostKey = Object.keys(presenceState).find(k => k !== game.stats.mageName);
-      startDuel(hostKey || 'Unknown Mage');
-    });
-
-    // Rematch — re-open lobby
-    document.getElementById('duel-rematch-btn').addEventListener('click', () => {
-      duelResultMenu.classList.remove('active');
-      duelResultMenu.classList.add('hidden');
-      openDuelLobby();
-    });
-
-    // Return to Library from result screen
-    document.getElementById('duel-result-close-btn').addEventListener('click', () => {
-      game.stop();
-      game.reset(); // Clear underlying canvas elements
-
-      // Clear the physical canvas frame to remove static drawings
-      const ctx = game.canvas.getContext('2d');
-      ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
-
-      duelResultMenu.classList.remove('active');
-      duelResultMenu.classList.add('hidden');
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-
-      // Remove the lobby blur effects from the main menu
-      startMenu.style.pointerEvents = 'auto';
-      startMenu.style.opacity = '1';
-      startMenu.style.filter = 'none';
-
-      updateMenuStats();
-    });
-
-    function updateWorkshopUI() {
-      workshopXp.innerText = game.stats.totalXP;
-      workshopLevel.innerText = game.stats.playerLevel;
-
-      // Update skills
-      skillNodes.forEach(node => {
-        const skillId = node.id.replace('skill-', '').replace('-btn', '');
-        if (game.stats.hasSkill(skillId)) {
-          node.classList.remove('locked');
-          node.classList.add('unlocked');
-        } else {
-          node.classList.remove('unlocked');
-          const cost = parseInt(node.dataset.cost, 10);
-          if (game.stats.totalXP >= cost) {
-            node.classList.remove('locked');
-          } else {
-            node.classList.add('locked');
-          }
-        }
-      });
-
-      // Update wands
-      wandBtns.forEach(btn => {
-        if (btn.dataset.color === game.stats.wandColor) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-    }
-
-    skillNodes.forEach(node => {
-      node.addEventListener('click', () => {
-        const skillId = node.id.replace('skill-', '').replace('-btn', '');
-        if (game.stats.hasSkill(skillId)) return; // Already unlocked
-
-        const cost = parseInt(node.dataset.cost, 10);
-        if (game.stats.spendXP(cost)) {
-          game.stats.unlockSkill(skillId);
-          updateWorkshopUI();
-
-          // Play purchase sound
-          game.audio.playExplosionSound();
-        }
-      });
-    });
-
-    wandBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const color = btn.dataset.color;
-        game.stats.setWandColor(color);
-        updateWorkshopUI();
-      });
-    });
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => renderLeaderboard(e.target.dataset.category));
-    });
-
-    leaderboardDifficultyFilter.addEventListener('change', () => {
-      const activeTab = document.querySelector('.tab-btn.active');
-      if (activeTab) renderLeaderboard(activeTab.dataset.category);
-    });
-
-    window.addEventListener('keydown', (e) => {
-      if (scribe.isRunning) {
-        if (e.key === 'Escape') {
-          quitPractice();
-          return;
-        }
-
-        // Stop the event from propagating to the hidden mobile input on Desktop
-        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-          if (e.preventDefault) e.preventDefault();
-        }
-
-        scribe.handleKeyDown(e);
-      }
-    });
-
-    // ── Mobile Support ────────────────────────────────────────────────────────
-
-    // Ensure mobile keyboard stays open or re-opens if they tap the screen while playing
-    document.addEventListener('touchstart', (e) => {
-      // Only intercept if we are actively playing and NOT touching a UI button
-      if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
-        // Small timeout helps bypass iOS Safari's aggressive focus blocking
-        setTimeout(() => {
-          mobileInput.focus();
-        }, 50);
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
-        mobileInput.focus();
-      }
-    });
-
-    // Intercept virtual keyboard input (since 'keydown' is unreliable on Android/iOS)
-    mobileInput.addEventListener('input', (e) => {
-      if (!game.isRunning && !scribe.isRunning) return;
-
-      // e.data contains the character that was just typed
-      const char = e.data;
-      if (char && char.length === 1) {
-        const syntheticEvent = {
-          key: char,
-          ctrlKey: false,
-          altKey: false,
-          metaKey: false,
-          preventDefault: () => { }
-        };
-
-        if (game.isRunning) {
-          game.handleKeyDown(syntheticEvent);
-        } else if (scribe.isRunning) {
-          scribe.handleKeyDown(syntheticEvent);
-        }
-      }
-
-      // Clear the input immediately so it's ready for the next letter
-      mobileInput.value = '';
-    });
-
-    // Mobile Ultimate Button
-    const castNovaMobile = (e) => {
-      e.preventDefault(); // prevent double-trigger from click if touchstart fires first
-      if (game.isRunning) {
-        game.castUltimateSpell();
-        // Keep focus on the typing field after casting
-        mobileInput.focus();
-      }
-    };
-
-    mobileNovaBtn.addEventListener('click', castNovaMobile);
-    mobileNovaBtn.addEventListener('touchstart', castNovaMobile);
-
   });
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => renderLeaderboard(e.target.dataset.category));
+  });
+
+  leaderboardDifficultyFilter.addEventListener('change', () => {
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) renderLeaderboard(activeTab.dataset.category);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (scribe.isRunning) {
+      if (e.key === 'Escape') {
+        quitPractice();
+        return;
+      }
+
+      // Stop the event from propagating to the hidden mobile input on Desktop
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (e.preventDefault) e.preventDefault();
+      }
+
+      scribe.handleKeyDown(e);
+    }
+  });
+
+  // ── Mobile Support ────────────────────────────────────────────────────────
+
+  // Ensure mobile keyboard stays open or re-opens if they tap the screen while playing
+  document.addEventListener('touchstart', (e) => {
+    // Only intercept if we are actively playing and NOT touching a UI button
+    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+      // Small timeout helps bypass iOS Safari's aggressive focus blocking
+      setTimeout(() => {
+        mobileInput.focus();
+      }, 50);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if ((game.isRunning || scribe.isRunning) && e.target.tagName !== 'BUTTON') {
+      mobileInput.focus();
+    }
+  });
+
+  // Intercept virtual keyboard input (since 'keydown' is unreliable on Android/iOS)
+  mobileInput.addEventListener('input', (e) => {
+    if (!game.isRunning && !scribe.isRunning) return;
+
+    // e.data contains the character that was just typed
+    const char = e.data;
+    if (char && char.length === 1) {
+      const syntheticEvent = {
+        key: char,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => { }
+      };
+
+      if (game.isRunning) {
+        game.handleKeyDown(syntheticEvent);
+      } else if (scribe.isRunning) {
+        scribe.handleKeyDown(syntheticEvent);
+      }
+    }
+
+    // Clear the input immediately so it's ready for the next letter
+    mobileInput.value = '';
+  });
+
+  // Mobile Ultimate Button
+  const castNovaMobile = (e) => {
+    e.preventDefault(); // prevent double-trigger from click if touchstart fires first
+    if (game.isRunning) {
+      game.castUltimateSpell();
+      // Keep focus on the typing field after casting
+      mobileInput.focus();
+    }
+  };
+
+  mobileNovaBtn.addEventListener('click', castNovaMobile);
+  mobileNovaBtn.addEventListener('touchstart', castNovaMobile);
+
+});
