@@ -757,6 +757,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   restartBtn.addEventListener('click', startGame);
   if (returnDashboardBtn) {
     returnDashboardBtn.addEventListener('click', () => {
+      game.stop();
+      game.reset();
+      const ctx = game.canvas.getContext('2d');
+      ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+
       gameOverMenu.classList.add('hidden');
       gameOverMenu.classList.remove('active');
       startMenu.classList.remove('hidden');
@@ -1156,16 +1161,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (duelActive) endDuel(true); // If opponent disconnects, local player wins
     };
 
-    await duel.join(code);
+    const hostKey = await duel.join(code);
     duelLobbyError.innerText = '';
-    // Get host's name from presence
-    const presenceState = duel.channel.presenceState();
-    const hostKey = Object.keys(presenceState).find(k => k !== game.stats.mageName);
-    startDuel(hostKey || 'Unknown Mage');
+
+    startDuel(hostKey);
   });
 
   // Rematch — re-open lobby
   document.getElementById('duel-rematch-btn').addEventListener('click', () => {
+    game.stop();
+    game.reset();
+
+    const ctx = game.canvas.getContext('2d');
+    ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+
     duelResultMenu.classList.remove('active');
     duelResultMenu.classList.add('hidden');
     openDuelLobby();

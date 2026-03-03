@@ -50,11 +50,36 @@ export class Duel {
     /**
      * GUEST: Join an existing Duel room by code.
      * @param {string} roomCode
+     * @returns {Promise<string>} The Host's Name
      */
     async join(roomCode) {
         this.isHost = false;
         this.roomCode = roomCode.toUpperCase().trim();
         await this._subscribe();
+
+        return new Promise((resolve) => {
+            let found = false;
+            
+            // Listen for the first sync event to find host's name
+            const onSync = () => {
+                if (found) return;
+                const state = this.channel.presenceState();
+                const hostKey = Object.keys(state).find(k => k !== this.playerName);
+                if (hostKey) {
+                    found = true;
+                    resolve(hostKey);
+                }
+            };
+            this.channel.on('presence', { event: 'sync' }, onSync);
+            
+            // Timeout after 1.5 seconds if sync doesn't return host
+            setTimeout(() => {
+                if (!found) {
+                    found = true;
+                    resolve('Unknown Mage');
+                }
+            }, 1500);
+        });
     }
 
     /**
