@@ -38,6 +38,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const patchNotes = [
     {
+      version: "v2.2.3",
+      date: "March 3, 2026",
+      desc: "Guest Mode, Magical Toasts & Scribe Improvements",
+      changes: [
+        "Added Guest Account system — play without registering using a temporary Mage Title.",
+        "Guests can access Arcane Survival, The Scribe's Trial, and the Hall of Fame.",
+        "Guest scores are submitted to the leaderboard under their chosen alias.",
+        "Replaced all browser alert() dialogs with animated Magical Toast notifications.",
+        "Added Escape key support to instantly dismiss toasts and close the Duel Lobby.",
+        "Fixed: Dashboard blur/unclickable state after returning from Profile or Duel Lobby.",
+        "Fixed: Scribe mode and duration dropdowns were losing focus immediately when clicked.",
+        "Fixed: Scribe Timed mode now uses full paragraphs instead of random disconnected words.",
+        "Expanded Arcane Dictionary: ~150 new words and 15 new lore paragraphs added."
+      ]
+    },
+    {
       version: "v2.2.2",
       date: "February 28, 2026",
       desc: "UI Polish & Layout Adjustments",
