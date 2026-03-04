@@ -6,8 +6,17 @@ export class Word {
         this.isBossAttack = options.isBossAttack || false;
 
         this.variant = options.variant || 'normal';
+        this.gameMode = options.gameMode || 'classic';
         this.typed = "";
-        this.untyped = text;
+        
+        if (this.variant === 'cursed') {
+            this.text = text.split('').reverse().join('');
+            this.untyped = this.text;
+        } else {
+            this.text = text;
+            this.untyped = text;
+        }
+        
         this.mistakesMade = 0;
 
         // Caching text measurements
@@ -217,6 +226,38 @@ export class Word {
             ctx.stroke();
         }
 
+        // Cursed word
+        if (this.variant === 'cursed') {
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#8a0303'; // Dark blood red
+            ctx.stroke();
+            ctx.fillStyle = '#8a0303';
+            ctx.font = '16px serif';
+            ctx.fillText('👁️‍🗨️', boxX - 25, textYOffset);
+            ctx.font = 'bold 32px Cinzel, serif';
+        }
+
+        // Combo word
+        if (this.variant === 'combo') {
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffd700'; // Gold chain
+            ctx.stroke();
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '16px serif';
+            ctx.fillText('🔗', boxX - 30, textYOffset + 2);
+            ctx.font = 'bold 32px Cinzel, serif';
+        }
+
+        // Elemental word (glow based on element)
+        if (this.variant === 'elemental') {
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = this.elementColors.untypedTargeted;
+            ctx.shadowColor = this.elementColors.untypedTargeted;
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0; // reset
+        }
+
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fill();
 
@@ -225,11 +266,36 @@ export class Word {
         ctx.fillText(this.typed, startX, textYOffset);
 
         // Untyped part
-        ctx.fillStyle = this.isTargeted ? '#ffd700' : '#ffffff';
-        ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
+        // Untyped part
+        if (this.gameMode === 'blind' && this.isTargeted && this.typed.length > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            const hiddenText = '?'.repeat(this.untyped.length);
+            ctx.fillText(hiddenText, startX + this._cachedTypedWidth, textYOffset);
+        } else {
+            if (this.variant === 'elemental') {
+                ctx.fillStyle = this.isTargeted ? this.elementColors.untypedTargeted : this.elementColors.untyped;
+            } else if (this.variant === 'cursed') {
+                ctx.fillStyle = this.isTargeted ? '#ff4b4b' : '#ff7b54'; 
+            } else {
+                ctx.fillStyle = this.isTargeted ? '#ffd700' : '#ffffff';
+            }
+            
+            ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
+        }
 
         ctx.restore();
         ctx.restore();
+    }
+
+    scramble() {
+        if (this.untyped.length > 2 && this.variant !== 'cursed') {
+            const arr = this.untyped.split('');
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            this.untyped = arr.join('');
+        }
     }
 
 }

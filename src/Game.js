@@ -6,6 +6,7 @@ import { Stats } from './Stats.js';
 import { Particle } from './Particle.js';
 import { AudioController } from './AudioController.js';
 import { FloatingText } from './FloatingText.js';
+import { Achievements } from './Achievements.js';
 
 export class Game {
     constructor(canvasId) {
@@ -13,8 +14,9 @@ export class Game {
         this.ctx = this.canvas.getContext('2d');
 
         this.dictionary = new WordDictionary();
-        this.stats = new Stats();
         this.audio = new AudioController();
+        this.achievements = new Achievements(this.audio);
+        this.stats = new Stats(this.achievements);
 
         this.words = [];
         this.particles = [];
@@ -83,8 +85,19 @@ export class Game {
         }
     }
 
-    start(difficulty = 'normal') {
+    start(difficulty = 'normal', mode = 'classic') {
         this.difficulty = difficulty;
+        this.gameMode = mode;
+
+        if (this.gameMode === 'daily') {
+            const todayStr = new Date().toISOString().split('T')[0];
+            this.dictionary.setSeed(todayStr);
+            // Force normal difficulty for daily challenges to ensure fairness
+            this.difficulty = 'normal';
+        } else {
+            this.dictionary.setSeed(null);
+        }
+
         this.reset();
         this.isRunning = true;
         this.audio.startBackgroundMusic();
@@ -110,6 +123,7 @@ export class Game {
         this.targetedWord = null;
         this.spawnTimer = 0;
         this.spawnCount = 0;
+        this.scrambleTimer = 0;
 
         // Boss phase state
         this.isBossPhase = false;
@@ -120,6 +134,10 @@ export class Game {
         // Screen shake
         this.shakeTimer = 0;
         this.shakeIntensity = 0;
+        
+        // Single run timer
+        this.survivalTime = 0;
+        this.survivorAwarded = false;
 
         // Difficulty settings
         const difficultySettings = {
@@ -168,10 +186,27 @@ export class Game {
 
     update(dt) {
         this.spawnTimer += dt;
+        this.survivalTime += dt;
+        
+        if (!this.survivorAwarded && this.survivalTime > 300000) { // 5 minutes
+            this.survivorAwarded = true;
+            this.achievements.onEvent('time_survived', { time: 300 });
+        }
 
         if (!this.isBossPhase && this.spawnTimer >= this.spawnInterval) {
             this.spawnWord();
             this.spawnTimer = 0;
+        }
+
+        // Chaos mode scramble
+        if (this.gameMode === 'chaos' && !this.isBossPhase) {
+            this.scrambleTimer += dt;
+            if (this.scrambleTimer > 3000) { // Scramble every 3.0s
+                this.scrambleTimer = 0;
+                this.words.forEach(w => {
+                    if (!w.isTargeted && w.scramble) w.scramble();
+                });
+            }
         }
 
         // Pocket Dimension fade
@@ -213,6 +248,7 @@ export class Game {
 
             // Wait for death animation to fully finish before ending phase
             if (this.boss.isFullyDead() && this.words.length === 0 && this.projectiles.length === 0) {
+                this.achievements.onEvent('boss_defeated');
                 this.endBossPhase();
             }
         }
@@ -614,7 +650,7 @@ export class Game {
 
                 const sx = targetX + (Math.random() - 0.5) * 400;
                 const sy = -100 - Math.random() * 100;
-                const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, sx, targetY, { variant: 'swarm' });
+                const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, sx, targetY, { variant: 'swarm', gameMode: this.gameMode });
                 // Override spawn position manually
                 newWord.x = sx;
                 newWord.y = sy;
@@ -648,7 +684,7 @@ export class Game {
             bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
         }
 
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50 });
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50, gameMode: this.gameMode });
         this.words.push(newWord);
     }
 
@@ -761,6 +797,7 @@ export class Game {
             this.spawnHitSpark(sparkX, sparkY, word.elementColors);
 
             if (word.untyped.length === 0) {
+                this.achievements.onEvent('word_typed');
                 // Word fully typed — trigger death animation
                 this.stats.addScore(word.text.length, true, word.mistakesMade === 0);
                 word.dying = true; // Let the animation play instead of instant splice

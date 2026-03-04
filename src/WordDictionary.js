@@ -201,12 +201,38 @@ export class WordDictionary {
   constructor() {
     this.words = wordList;
     this._queues = {};
+    this.seed = null;
+    this._currentSeed = 0;
+  }
+
+  setSeed(seedStr) {
+    if (!seedStr) {
+        this.seed = null;
+        return;
+    }
+    this.seed = seedStr;
+    let h = 0xdeadbeef;
+    for(let i = 0; i < seedStr.length; i++)
+        h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
+    this._currentSeed = (h ^ h >>> 16) >>> 0;
+    // clear queues so next draw is seeded
+    this._queues = {};
+  }
+
+  _random() {
+      if (this.seed) {
+          let t = this._currentSeed += 0x6D2B79F5;
+          t = Math.imul(t ^ t >>> 15, t | 1);
+          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+      return Math.random();
   }
 
   _shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(this._random() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
@@ -237,9 +263,22 @@ export class WordDictionary {
     return `${word1}-${word2}`;
   }
 
+  getComboChain(difficulty = 'easy', length = 2) {
+    let tier = 'easy';
+    if (difficulty === 'normal') tier = 'medium';
+    if (difficulty === 'hard') tier = 'hard';
+    if (difficulty === 'hell') tier = 'epic';
+
+    const words = [];
+    for (let i = 0; i < length; i++) {
+      words.push(this._drawFromQueue(tier));
+    }
+    return words.join('-');
+  }
+
   getRandomParagraph() {
     const list = this.words.paragraphs;
-    return list[Math.floor(Math.random() * list.length)];
+    return list[Math.floor(this._random() * list.length)];
   }
 
   getScribeWord() {

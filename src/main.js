@@ -29,7 +29,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const leaderboardMenu = document.getElementById('leaderboard-menu');
   const practiceUi = document.getElementById('practice-ui');
   const workshopMenu = document.getElementById('workshop-menu');
-
+  const achievementsMenu = document.getElementById('achievements-menu');
+  
+  const menuMageTitle = document.getElementById('menu-mage-title');
+  const openAchievementsBtn = document.getElementById('open-achievements-icon-btn');
+  const closeAchievementsBtn = document.getElementById('close-achievements-btn');
+  const achievementsList = document.getElementById('achievements-list');
   // Patch Board
   const patchBoardMenu = document.getElementById('patch-board-menu');
   const openPatchBoardBtn = document.getElementById('open-patch-board-btn');
@@ -210,8 +215,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const scribeDurationSelect = document.getElementById('scribe-duration-select');
   const scribeTimerContainer = document.getElementById('scribe-timer-container');
 
-  // Difficulty Select
+  // Difficulty & Mode Select
   const difficultySelect = document.getElementById('difficulty-select');
+  const modeSelect = document.getElementById('mode-select');
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
 
   // WPM Graph
@@ -592,6 +598,90 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Kick off the initial check
   checkSession();
 
+  // ========== ACHIEVEMENTS SYSTEM ==========
+  const initTitle = localStorage.getItem('typerMaster_equippedTitle') || 'Apprentice';
+  if (menuMageTitle) menuMageTitle.innerText = initTitle;
+
+  openAchievementsBtn.addEventListener('click', () => {
+    startMenu.classList.remove('active');
+    startMenu.classList.add('hidden');
+    achievementsMenu.classList.remove('hidden');
+    populateAchievements();
+    setTimeout(() => achievementsMenu.classList.add('active'), 10);
+  });
+
+  closeAchievementsBtn.addEventListener('click', () => {
+    achievementsMenu.classList.remove('active');
+    achievementsMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
+  });
+
+  function populateAchievements() {
+    if (!achievementsList) return;
+    achievementsList.innerHTML = '';
+    const allDefs = game.achievements.definitions;
+    const unlocked = game.achievements.unlocked;
+    const equippedTitle = localStorage.getItem('typerMaster_equippedTitle') || null;
+
+    if (equippedTitle && menuMageTitle) {
+      menuMageTitle.innerText = equippedTitle;
+    }
+
+    for (const id in allDefs) {
+      const def = allDefs[id];
+      const isUnlocked = unlocked.has(id);
+      const isEquipped = equippedTitle === def.title;
+
+      const card = document.createElement('div');
+      card.style.background = isUnlocked ? 'linear-gradient(135deg, rgba(20,10,40,0.8), rgba(40,20,60,0.9))' : 'rgba(10,5,20,0.8)';
+      card.style.border = isUnlocked ? '1px solid #f9a825' : '1px solid #333';
+      card.style.borderRadius = '8px';
+      card.style.padding = '15px';
+      card.style.display = 'flex';
+      card.style.flexDirection = 'column';
+      card.style.gap = '8px';
+
+      card.innerHTML = `
+          <h3 style="color: ${isUnlocked ? '#f9a825' : '#666'}; margin: 0; font-family: Cinzel, serif; letter-spacing: 1px;">${isUnlocked ? def.name : '???'}</h3>
+          <p style="color: ${isUnlocked ? '#ccc' : '#444'}; font-size: 0.85rem; margin: 0; line-height: 1.4;">${isUnlocked ? def.description : 'Locked Achievement'}</p>
+          ${isUnlocked ? `<div style="margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255,215,0,0.2);"><p style="color: #b892b0; font-size: 0.8rem; margin: 0;">Unlocks Title: <span style="color: #fff; font-weight: bold;">${def.title}</span></p></div>` : ''}
+      `;
+
+      if (isUnlocked) {
+        const equipBtn = document.createElement('button');
+        equipBtn.className = 'primary-btn';
+        equipBtn.style.padding = '5px 10px';
+        equipBtn.style.fontSize = '0.8rem';
+        equipBtn.style.width = '100%';
+        equipBtn.style.marginTop = '10px';
+        equipBtn.innerText = isEquipped ? 'EQUIPPED' : 'EQUIP TITLE';
+        if (isEquipped) {
+          equipBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+          equipBtn.style.border = '1px solid #4CAF50';
+          equipBtn.style.color = '#4CAF50';
+        } else {
+          equipBtn.style.background = 'linear-gradient(45deg, #1b0a2a, #3a155c)';
+          equipBtn.style.border = '1px solid #d500f9';
+        }
+        equipBtn.onclick = () => {
+          localStorage.setItem('typerMaster_equippedTitle', def.title);
+          populateAchievements(); // re-render list to update buttons
+        };
+        card.appendChild(equipBtn);
+      }
+
+      achievementsList.appendChild(card);
+    }
+  }
+
+  // Hook into in-game toasts
+  game.achievements.onUnlockCallback = (def) => {
+    if (typeof showMagicalToast === 'function') {
+      showMagicalToast(`🏆 <b>Achievement Unlocked</b><br><span style="color: #f9a825;">${def.name}</span><br><span style="font-size: 0.8rem; color: var(--text-muted);">${def.title}</span>`, 4000);
+    }
+  };
+
   function updateProgressionUI() {
     if (!game.stats) return;
     const levelEl = document.getElementById('menu-player-level');
@@ -653,7 +743,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     practiceUi.classList.add('hidden');
 
     hud.classList.remove('hidden');
-    game.start(difficultySelect.value);
+
+    const modeSelectElement = document.getElementById('mode-select');
+    const selectedMode = modeSelectElement ? modeSelectElement.value : 'classic';
+
+    game.start(difficultySelect.value, selectedMode);
 
     // Focus invisible input to trigger mobile keyboard
     mobileInput.value = '';
@@ -732,12 +826,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bypassing prompt: auto submit if they have a profile
     if (qualifies && game.stats.mageName) {
       await leaderboard.addScore(
-        game.difficulty,
+        game.difficulty, // Daily uses 'normal' effectively
         game.stats.mageName,
         finalStats.score,
         finalStats.getSessionWPM(),
         finalStats.getAccuracy()
       );
+    }
+
+    if (game.gameMode === 'daily') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const lastCompleted = localStorage.getItem('typerMaster_dailyCompleted');
+        if (lastCompleted !== todayStr) {
+            localStorage.setItem('typerMaster_dailyCompleted', todayStr);
+            game.stats.addXP(500); // Generous daily reward!
+            if (typeof showMagicalToast === 'function') {
+                showMagicalToast("🌟 Daily Challenge Complete! +500 XP Awarded 🌟", 5000);
+            }
+        } else {
+            if (typeof showMagicalToast === 'function') {
+                showMagicalToast("Daily Challenge Replayed. (Rewards already claimed today)", 3000);
+            }
+        }
     }
 
     restartBtn.classList.remove('hidden');

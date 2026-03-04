@@ -68,6 +68,10 @@
           style="display: flex; flex-direction: column; align-items: center; gap: clamp(5px, 1vh, 15px); width: 100%; z-index: 5; pointer-events: none;">
           <h1>ARCANE<span class="highlight">TYPER</span></h1>
           <p class="subtitle">Enchanted Library Edition - v2.2.3</p>
+          <div style="text-align: center; margin-bottom: 5px;">
+              <h2 id="menu-mage-name" style="color: #fff; font-size: 1.5rem; margin: 0; text-shadow: 0 0 10px rgba(255,255,255,0.5);">Anonymous Mage</h2>
+              <p id="menu-mage-title" style="color: #ffd700; font-size: 0.9rem; font-style: italic; margin: 0; letter-spacing: 2px;">No Title Equipped</p>
+          </div>
           <div class="stats-overview" style="display: flex; flex-direction: column; gap: 8px;">
             <div
               style="display: flex; gap: 15px; justify-content: center; align-items: center; font-size: 1.1rem; color: #b892b0;">
@@ -86,14 +90,24 @@
               <p>Max WPM: <span id="menu-best-wpm">0</span></p>
             </div>
           </div>
-          <div class="difficulty-selector">
-            <label for="difficulty-select">Select Challenge:</label>
-            <select id="difficulty-select">
-              <option value="easy">Novice (Easy)</option>
-              <option value="normal" selected>Adept (Normal)</option>
-              <option value="hard">Archmage (Hard)</option>
-              <option value="hell">Cataclysm (Hell)</option>
-            </select>
+          <div class="selectors-container" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+            <div class="difficulty-selector" style="margin-bottom: 0;">
+              <label for="difficulty-select">Challenge:</label>
+              <select id="difficulty-select">
+                <option value="easy">Novice (Easy)</option>
+                <option value="normal" selected>Adept (Normal)</option>
+                <option value="hard">Archmage (Hard)</option>
+                <option value="hell">Cataclysm (Hell)</option>
+              </select>
+            </div>
+            <div class="difficulty-selector" style="margin-bottom: 0;">
+              <label for="mode-select">Game Mode:</label>
+              <select id="mode-select">
+                <option value="classic" selected>Classic Survival</option>
+                <option value="chaos">Chaos (Scrambled)</option>
+                <option value="blind">Blind (Hidden Text)</option>
+              </select>
+            </div>
           </div>
           <div class="button-group"
             style="display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 15px); width: 100%; max-width: 300px;">
@@ -140,6 +154,20 @@
               style="background: #ff4b4b; box-shadow: 0 0 50px 20px rgba(255, 75, 75, 0.6);"></div>
           </div>
         </div>
+        <!-- Trophy Button -->
+        <button id="open-achievements-icon-btn" title="Trophy Room (Achievements)"
+          style="position: absolute; bottom: 80px; right: 20px; background: rgba(0, 0, 0, 0.6); color: #f9a825; border: 1px solid #f9a825; border-radius: 50%; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; z-index: 100; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(249, 168, 37, 0.3);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+          </svg>
+        </button>
+
         <!-- Patch Board Button -->
         <button id="open-patch-board-btn" title="View Patch Board (Recent Changes)"
           style="position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); color: #ffd700; border: 1px solid #ffd700; border-radius: 50%; cursor: pointer; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; z-index: 100; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);">
@@ -578,6 +606,26 @@
         </div>
       </div>
 
+      <!-- Achievements Menu -->
+      <div id="achievements-menu" class="overlay-menu hidden"
+        style="justify-content: flex-start; padding-top: 5vh; padding-bottom: 5vh;">
+        <h2
+          style="color: #f9a825; text-shadow: 0 0 20px rgba(249, 168, 37, 0.6); font-size: clamp(2rem, 5vh, 3rem); letter-spacing: 5px; margin-bottom: 0.5rem; flex-shrink: 0;">
+          🏆 TROPHY ROOM</h2>
+        <p
+          style="color: #b892b0; font-size: clamp(0.8rem, 2vh, 1.1rem); letter-spacing: 4px; margin-bottom: 2rem; text-shadow: 0 0 10px rgba(184,146,176,0.4); flex-shrink: 0;">
+          YOUR UNLOCKED TITLES</p>
+
+        <div id="achievements-list" class="patch-board-container"
+          style="width: 100%; max-width: 800px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; overflow-y: auto;">
+          <!-- JS Populated Achievements -->
+        </div>
+
+        <button id="close-achievements-btn" class="primary-btn"
+          style="margin-top: 2rem; position: relative; z-index: 100; pointer-events: auto; flex-shrink: 0; align-self: center;">RETURN
+          TO LIBRARY</button>
+      </div>
+
       <!-- Scribe's Trial UI -->
       <div id="practice-ui" class="overlay-menu hidden"
         style="background: rgba(10, 5, 15, 0.95); justify-content: flex-start; padding-top: 6vh;">
@@ -670,11 +718,11 @@
 
       <!-- Mage Recognition / Login Menu -->
       <div id="character-creation-menu" class="overlay-menu hidden" style="z-index: 40;">
-        <h2 id="cc-title" style="margin-bottom: 0.5rem; font-size: 2rem;">MAGE RECOGNITION</h2>
-        <p id="cc-subtitle" style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">Speak your Owl
+        <h2 id="cc-title" style="margin-bottom: 0.2rem; font-size: 1.6rem;">MAGE RECOGNITION</h2>
+        <p id="cc-subtitle" style="color: var(--text-muted); margin-bottom: 0.8rem; font-size: 0.8rem;">Speak your Owl
           Delivery and Incantation.</p>
         <div
-          style="display: flex; flex-direction: column; gap: 0.8rem; width: 400px; max-width: 90vw; background: rgba(0, 0, 0, 0.6); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--accent-primary); box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);">
+          style="display: flex; flex-direction: column; gap: 0.5rem; width: 400px; max-width: 90vw; background: rgba(0, 0, 0, 0.6); padding: 1rem; border-radius: 12px; border: 1px solid var(--accent-primary); box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);">
 
           <div style="display: flex; flex-direction: column; gap: 3px;">
             <label id="cc-username-label"
@@ -748,17 +796,17 @@
       <div id="profile-menu" class="overlay-menu hidden"
         style="z-index: 35; justify-content: center; overflow: hidden;">
         <div
-          style="margin: auto; padding: 10px 0; display: flex; flex-direction: column; align-items: center; width: 100%; pointer-events: none;">
-          <h2 style="position: relative; z-index: 10; pointer-events: auto; margin-bottom: 0;">MAGE PROFILE</h2>
+          style="margin: auto; padding: 5px 0; display: flex; flex-direction: column; align-items: center; width: 100%; pointer-events: none;">
+          <h2 style="position: relative; z-index: 10; pointer-events: auto; margin-bottom: 0; font-size: 1.6rem;">MAGE PROFILE</h2>
           <div
-            style="display: flex; flex-direction: column; gap: 1.5rem; width: 400px; max-width: 90vw; padding: 1rem; position: relative; z-index: 10; pointer-events: auto;">
+            style="display: flex; flex-direction: column; gap: 0.8rem; width: 400px; max-width: 90vw; padding: 0.8rem; position: relative; z-index: 10; pointer-events: auto;">
 
             <div style="text-align: center;">
-              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
+              <p style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase;">
                 Mage
                 Title</p>
               <h3 id="profile-nickname"
-                style="color: #ffd700; font-size: clamp(1.2rem, 5vw, 2rem); margin-top: 5px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); word-wrap: break-word; overflow-wrap: break-word;">
+                style="color: #ffd700; font-size: clamp(1.1rem, 4vw, 1.5rem); margin-top: 3px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); word-wrap: break-word; overflow-wrap: break-word;">
                 Unknown Mage</h3>
             </div>
 
@@ -779,17 +827,17 @@
 
             <!-- Run History Graph -->
             <div
-              style="text-align: center; padding: 10px; border: 1px solid rgba(41, 182, 246, 0.3); border-radius: 8px; background: rgba(0, 0, 0, 0.4);">
-              <p style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 5px;">WPM
+              style="text-align: center; padding: 5px 10px; border: 1px solid rgba(41, 182, 246, 0.3); border-radius: 8px; background: rgba(0, 0, 0, 0.4);">
+              <p style="color: var(--text-muted); font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 3px;">WPM
                 History (Last 10 Runs)</p>
-              <canvas id="profile-history-chart" width="350" height="150"
+              <canvas id="profile-history-chart" width="350" height="110"
                 style="display: block; margin: 0 auto;"></canvas>
             </div>
 
             <div
-              style="text-align: center; padding: 15px; border: 1px dashed var(--text-muted); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
-              <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">Badges & Achievements</p>
-              <p style="color: #b892b0; font-size: 0.85rem; margin-top: 10px; font-style: italic;">Coming Soon in Phase
+              style="text-align: center; padding: 10px; border: 1px dashed var(--text-muted); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+              <p style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px;">Badges & Achievements</p>
+              <p style="color: #b892b0; font-size: 0.75rem; margin-top: 5px; font-style: italic;">Coming Soon in Phase
                 4
               </p>
             </div>

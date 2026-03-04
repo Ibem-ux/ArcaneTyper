@@ -1,7 +1,8 @@
 import { supabase } from './supabaseClient.js';
 
 export class Stats {
-    constructor() {
+    constructor(achievements) {
+        this.achievements = achievements;
         this.score = 0;
         this.keystrokes = 0;
         this.correctKeystrokes = 0;
@@ -73,6 +74,7 @@ export class Stats {
             this.correctKeystrokes++;
             this.combo++;
             if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+            if (this.achievements) this.achievements.onEvent('combo_update', { combo: this.combo });
             // Record timestamp for rolling window calculation
             this._keystrokeTimestamps.push(Date.now());
 
@@ -145,7 +147,9 @@ export class Stats {
         const windowSpanMin = windowSpanMs / 60000;
 
         // Standard WPM: keystrokes / 5 / minutes
-        return Math.round((countInWindow / 5) / windowSpanMin);
+        const wpm = Math.round((countInWindow / 5) / windowSpanMin);
+        if (this.achievements && wpm > 0) this.achievements.onEvent('wpm_update', { wpm });
+        return wpm;
     }
 
     // Full-session WPM — used for leaderboard saving
@@ -282,6 +286,7 @@ export class Stats {
 
         if (this.playerLevel > oldLevel) {
             console.log(`[Stats] Level Up! You are now Level ${this.playerLevel}`);
+            if (this.achievements) this.achievements.onEvent('level_up', { level: this.playerLevel });
         }
         this.saveProgression();
     }
