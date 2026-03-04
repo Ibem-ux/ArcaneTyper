@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient.js';
+
 export class Stats {
     constructor() {
         this.score = 0;
@@ -21,7 +23,7 @@ export class Stats {
 
         // --- RPG Elements ---
         this.totalXP = parseInt(localStorage.getItem('typerMaster_xp') || '0', 10);
-        this.playerLevel = parseInt(localStorage.getItem('typerMaster_level') || '1', 10);
+        this.playerLevel = Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
         this.unlockedSkills = JSON.parse(localStorage.getItem('typerMaster_skills') || '[]');
         this.wandColor = localStorage.getItem('typerMaster_wandColor') || '#ff00ff';
         this.mageName = localStorage.getItem('typerMaster_mageName') || null;
@@ -273,12 +275,70 @@ export class Stats {
         this.saveProgression();
     }
 
+    addXP(amount) {
+        this.totalXP += amount;
+        const oldLevel = this.playerLevel;
+        this.playerLevel = Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
+
+        if (this.playerLevel > oldLevel) {
+            console.log(`[Stats] Level Up! You are now Level ${this.playerLevel}`);
+        }
+        this.saveProgression();
+    }
+
+    getXPProgress() {
+        const currentLevelTarget = Math.pow(this.playerLevel - 1, 2) * 500;
+        const nextLevelTarget = Math.pow(this.playerLevel, 2) * 500;
+        const xpInCurrentLevel = this.totalXP - currentLevelTarget;
+        const xpRequired = nextLevelTarget - currentLevelTarget;
+        return Math.min(100, Math.max(0, (xpInCurrentLevel / xpRequired) * 100));
+    }
+
+    async logRunToSupabase(mode, wpm, accuracy, score) {
+        if (!supabase) return;
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session || !session.user) return;
+
+            const { error } = await supabase.from('run_history').insert([{
+                user_id: session.user.id,
+                mode: mode,
+                wpm: wpm,
+                accuracy: accuracy,
+                score: score
+            }]);
+
+            if (error) {
+                console.warn("[Stats] Error saving run to run_history:", error);
+            } else {
+                console.log(`[Stats] Saved run to run_history (${mode}, wpm:${wpm})`);
+            }
+        } catch (e) {
+            console.warn("[Stats] Exception logging run to Supabase:", e);
+        }
+    }
+
     saveProgression() {
         localStorage.setItem('typerMaster_xp', this.totalXP.toString());
         localStorage.setItem('typerMaster_skills', JSON.stringify(this.unlockedSkills));
         localStorage.setItem('typerMaster_wandColor', this.wandColor);
         if (this.mageName) {
             localStorage.setItem('typerMaster_mageName', this.mageName);
+        }
+
+        if (supabase) {
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session && session.user) {
+                    supabase.from('profiles').upsert([{
+                        id: session.user.id,
+                        total_xp: this.totalXP,
+                        player_level: this.playerLevel,
+                        username: this.mageName || session.user.email.split('@')[0]
+                    }], { onConflict: 'id' }).then(({ error }) => {
+                        if (error) console.warn("[Stats] Supabase profiles sync error:", error);
+                    });
+                }
+            });
         }
     }
 }

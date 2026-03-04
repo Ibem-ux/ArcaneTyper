@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ArcaneTyper — The Enchanted Library</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -67,9 +68,23 @@
           style="display: flex; flex-direction: column; align-items: center; gap: clamp(5px, 1vh, 15px); width: 100%; z-index: 5; pointer-events: none;">
           <h1>ARCANE<span class="highlight">TYPER</span></h1>
           <p class="subtitle">Enchanted Library Edition - v2.2.3</p>
-          <div class="stats-overview">
-            <p>Mastery Score: <span id="menu-best-score">0</span></p>
-            <p>Max Incantations/Min: <span id="menu-best-wpm">0</span></p>
+          <div class="stats-overview" style="display: flex; flex-direction: column; gap: 8px;">
+            <div
+              style="display: flex; gap: 15px; justify-content: center; align-items: center; font-size: 1.1rem; color: #b892b0;">
+              <p>Level <span id="menu-player-level"
+                  style="color: #ffd700; font-weight: bold; font-size: 1.3rem;">1</span></p>
+              <div
+                style="width: 150px; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid #b892b0; border-radius: 5px; overflow: hidden; position: relative;"
+                title="XP to next level">
+                <div id="menu-xp-bar"
+                  style="height: 100%; width: 0%; background: linear-gradient(90deg, #d500f9, #29b6f6); transition: width 0.5s ease;">
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: center; font-size: 0.9rem;">
+              <p>Mastery Score: <span id="menu-best-score">0</span></p>
+              <p>Max WPM: <span id="menu-best-wpm">0</span></p>
+            </div>
           </div>
           <div class="difficulty-selector">
             <label for="difficulty-select">Select Challenge:</label>
@@ -760,6 +775,15 @@
               <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
                 Discipline</p>
               <p id="profile-class" style="color: #00e5ff; font-size: 1.2rem; margin-top: 5px;">Novice</p>
+            </div>
+
+            <!-- Run History Graph -->
+            <div
+              style="text-align: center; padding: 10px; border: 1px solid rgba(41, 182, 246, 0.3); border-radius: 8px; background: rgba(0, 0, 0, 0.4);">
+              <p style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 5px;">WPM
+                History (Last 10 Runs)</p>
+              <canvas id="profile-history-chart" width="350" height="150"
+                style="display: block; margin: 0 auto;"></canvas>
             </div>
 
             <div

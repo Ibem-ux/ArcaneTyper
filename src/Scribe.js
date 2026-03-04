@@ -355,6 +355,14 @@ export class Scribe {
 
         this.resultsMenu.classList.remove('hidden');
 
+        const scribeScore = Math.floor(wpm * (accuracy / 100)) * 10;
+
+        // Log to Supabase and Add XP
+        if (this.stats) {
+            if (this.stats.addXP) this.stats.addXP(Math.floor(scribeScore / 10));
+            if (this.stats.logRunToSupabase) this.stats.logRunToSupabase('scribe', wpm, accuracy, scribeScore);
+        }
+
         if (this.onTrialComplete) {
             this.onTrialComplete(wpm, rawWpm, accuracy, consistency, [...this.wpmSamples]);
         }

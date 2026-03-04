@@ -345,6 +345,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         game.stats.mageName = session.user.email.split('@')[0];
         game.stats.saveProgression();
       }
+
+      const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', session.user.id).single();
+      if (profile) {
+        game.stats.totalXP = profile.total_xp || 0;
+        game.stats.playerLevel = Math.floor(Math.sqrt(game.stats.totalXP / 500)) + 1;
+        game.stats.saveProgression();
+      }
+      updateProgressionUI();
+
       startMenu.classList.remove('hidden');
       startMenu.classList.add('active');
     } else {
@@ -583,6 +592,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Kick off the initial check
   checkSession();
 
+  function updateProgressionUI() {
+    if (!game.stats) return;
+    const levelEl = document.getElementById('menu-player-level');
+    const xpBarEl = document.getElementById('menu-xp-bar');
+    if (levelEl) levelEl.innerText = game.stats.playerLevel || 1;
+    if (xpBarEl) xpBarEl.style.width = (game.stats.getXPProgress ? game.stats.getXPProgress() : 0) + '%';
+  }
+
   function updateMenuStats() {
     menuBestScore.innerText = game.stats.bestScore;
     menuBestWpm.innerText = game.stats.bestWPM;
@@ -593,6 +610,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       glow.style.backgroundColor = game.stats.wandColor;
       glow.style.boxShadow = `0 0 15px 5px ${game.stats.wandColor}66`; // 66 is hex for roughly 40% opacity
     });
+
+    updateProgressionUI();
   }
   updateMenuStats();
 
@@ -953,6 +972,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Profile Listeners
   const backgroundMage = document.getElementById('background-mage');
 
+  let profileChartInstance = null;
+  function renderProfileChart(runs) {
+    const ctx = document.getElementById('profile-history-chart').getContext('2d');
+    if (profileChartInstance) {
+      profileChartInstance.destroy();
+    }
+
+    const labels = runs.map((run, index) => `#${index + 1}`);
+    const dataStr = runs.map(run => run.wpm);
+
+    profileChartInstance = new window.Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'WPM',
+          data: dataStr,
+          borderColor: '#29b6f6',
+          backgroundColor: 'rgba(41, 182, 246, 0.2)',
+          tension: 0.3,
+          fill: true,
+          pointBackgroundColor: '#ffd700'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+          x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+        }
+      }
+    });
+  }
+
   const openProfileHandler = async () => {
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
@@ -976,6 +1030,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           profileClassUI.innerText = session.user.user_metadata.discipline;
         } else {
           profileClassUI.innerText = 'The Scholar (Balanced)'; // Legacy default
+        }
+
+        // Fetch Run History for Graph
+        const { data: runs } = await supabase
+          .from('run_history')
+          .select('wpm, created_at')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (runs && runs.length > 0) {
+          renderProfileChart(runs.reverse());
         }
       }
     } else {

@@ -957,6 +957,8 @@ export class Game {
         this.stop();
         this.stats.updateHUD();
         this.stats.saveHighScore();
+        this.stats.addXP(Math.floor(this.stats.score / 10));
+        this.stats.logRunToSupabase('arena', this.stats.getSessionWPM(), this.stats.getAccuracy(), this.stats.score);
 
         if (this.onGameOver) {
             this.onGameOver(this.stats);
