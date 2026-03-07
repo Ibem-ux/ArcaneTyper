@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const practiceUi = document.getElementById('practice-ui');
   const workshopMenu = document.getElementById('workshop-menu');
   const achievementsMenu = document.getElementById('achievements-menu');
-  
+
   const menuMageTitle = document.getElementById('menu-mage-title');
   const openAchievementsBtn = document.getElementById('open-achievements-icon-btn');
   const closeAchievementsBtn = document.getElementById('close-achievements-btn');
@@ -218,6 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Difficulty & Mode Select
   const difficultySelect = document.getElementById('difficulty-select');
   const modeSelect = document.getElementById('mode-select');
+  const dictionarySelect = document.getElementById('dictionary-select');
+  const mageClassSelect = document.getElementById('mage-class-select');
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
 
   // WPM Graph
@@ -747,7 +749,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeSelectElement = document.getElementById('mode-select');
     const selectedMode = modeSelectElement ? modeSelectElement.value : 'classic';
 
-    game.start(difficultySelect.value, selectedMode);
+    const dictionarySelectElement = document.getElementById('dictionary-select');
+    const selectedDictionary = dictionarySelectElement ? dictionarySelectElement.value : 'classic';
+
+    game.start(difficultySelect.value, selectedMode, selectedDictionary);
 
     // Focus invisible input to trigger mobile keyboard
     mobileInput.value = '';
@@ -835,19 +840,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (game.gameMode === 'daily') {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const lastCompleted = localStorage.getItem('typerMaster_dailyCompleted');
-        if (lastCompleted !== todayStr) {
-            localStorage.setItem('typerMaster_dailyCompleted', todayStr);
-            game.stats.addXP(500); // Generous daily reward!
-            if (typeof showMagicalToast === 'function') {
-                showMagicalToast("🌟 Daily Challenge Complete! +500 XP Awarded 🌟", 5000);
-            }
-        } else {
-            if (typeof showMagicalToast === 'function') {
-                showMagicalToast("Daily Challenge Replayed. (Rewards already claimed today)", 3000);
-            }
+      const todayStr = new Date().toISOString().split('T')[0];
+      const lastCompleted = localStorage.getItem('typerMaster_dailyCompleted');
+      if (lastCompleted !== todayStr) {
+        localStorage.setItem('typerMaster_dailyCompleted', todayStr);
+        game.stats.addXP(500); // Generous daily reward!
+        if (typeof showMagicalToast === 'function') {
+          showMagicalToast("🌟 Daily Challenge Complete! +500 XP Awarded 🌟", 5000);
         }
+      } else {
+        if (typeof showMagicalToast === 'function') {
+          showMagicalToast("Daily Challenge Replayed. (Rewards already claimed today)", 3000);
+        }
+      }
     }
 
     restartBtn.classList.remove('hidden');
@@ -1060,6 +1065,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (practiceUi.classList.contains('active')) {
       startPractice(true);
     }
+  });
+
+  // ── Mage Class Selection ──────────────────────────────────────────────────
+
+  if (mageClassSelect && game.stats.mageClass) {
+    mageClassSelect.value = game.stats.mageClass;
+  }
+
+  mageClassSelect.addEventListener('change', (e) => {
+    game.stats.setMageClass(e.target.value);
   });
 
   forfeitBtn.addEventListener('click', () => {

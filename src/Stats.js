@@ -28,6 +28,7 @@ export class Stats {
         this.unlockedSkills = JSON.parse(localStorage.getItem('typerMaster_skills') || '[]');
         this.wandColor = localStorage.getItem('typerMaster_wandColor') || '#ff00ff';
         this.mageName = localStorage.getItem('typerMaster_mageName') || null;
+        this.mageClass = localStorage.getItem('typerMaster_mageClass') || 'Novice';
 
         this.bindDOM();
     }
@@ -100,7 +101,14 @@ export class Stats {
 
     addScore(wordLength, grantMana = true, isPerfect = false) {
         const comboMultiplier = this.getComboMultiplier();
-        this.score += Math.floor(wordLength * 10 * comboMultiplier);
+        let points = Math.floor(wordLength * 10 * comboMultiplier);
+
+        // Pyromancer Focus Skill: +20% Score (which also dictates base XP gain)
+        if (this.mageClass === 'Pyromancer') {
+            points = Math.floor(points * 1.2);
+        }
+
+        this.score += points;
         this.wordsTyped++;
 
         // Philosopher's Focus Skill: +2 XP for perfectly typed words
@@ -242,11 +250,14 @@ export class Stats {
     addXP(amount) {
         this.totalXP += amount;
 
+        const oldLevel = this.playerLevel;
         // Simple level up formula: level = 1 + floor(sqrt(xp / 100))
-        const newLevel = 1 + Math.floor(Math.sqrt(this.totalXP / 100));
-        if (newLevel > this.playerLevel) {
-            this.playerLevel = newLevel;
+        this.playerLevel = 1 + Math.floor(Math.sqrt(this.totalXP / 100));
+
+        if (this.playerLevel > oldLevel) {
+            console.log(`[Stats] Level Up! You are now Level ${this.playerLevel}`);
             localStorage.setItem('typerMaster_level', this.playerLevel.toString());
+            if (this.achievements) this.achievements.onEvent('level_up', { level: this.playerLevel });
         }
 
         this.saveProgression();
@@ -279,17 +290,12 @@ export class Stats {
         this.saveProgression();
     }
 
-    addXP(amount) {
-        this.totalXP += amount;
-        const oldLevel = this.playerLevel;
-        this.playerLevel = Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
-
-        if (this.playerLevel > oldLevel) {
-            console.log(`[Stats] Level Up! You are now Level ${this.playerLevel}`);
-            if (this.achievements) this.achievements.onEvent('level_up', { level: this.playerLevel });
-        }
+    setMageClass(className) {
+        this.mageClass = className;
         this.saveProgression();
     }
+
+
 
     getXPProgress() {
         const currentLevelTarget = Math.pow(this.playerLevel - 1, 2) * 500;
@@ -327,6 +333,7 @@ export class Stats {
         localStorage.setItem('typerMaster_xp', this.totalXP.toString());
         localStorage.setItem('typerMaster_skills', JSON.stringify(this.unlockedSkills));
         localStorage.setItem('typerMaster_wandColor', this.wandColor);
+        localStorage.setItem('typerMaster_mageClass', this.mageClass);
         if (this.mageName) {
             localStorage.setItem('typerMaster_mageName', this.mageName);
         }

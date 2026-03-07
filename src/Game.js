@@ -85,9 +85,10 @@ export class Game {
         }
     }
 
-    start(difficulty = 'normal', mode = 'classic') {
+    start(difficulty = 'normal', mode = 'classic', dictionaryType = 'classic') {
         this.difficulty = difficulty;
         this.gameMode = mode;
+        this.dictionary.setDictionary(dictionaryType);
 
         if (this.gameMode === 'daily') {
             const todayStr = new Date().toISOString().split('T')[0];
@@ -97,6 +98,12 @@ export class Game {
         } else {
             this.dictionary.setSeed(null);
         }
+
+        this.sigilActive = false;
+        this.sigilTimer = 0;
+        this.sigilSequence = [];
+        this.sigilInputs = [];
+        this.sigilMaxTime = 0;
 
         this.reset();
         this.isRunning = true;
@@ -134,7 +141,7 @@ export class Game {
         // Screen shake
         this.shakeTimer = 0;
         this.shakeIntensity = 0;
-        
+
         // Single run timer
         this.survivalTime = 0;
         this.survivorAwarded = false;
@@ -187,7 +194,7 @@ export class Game {
     update(dt) {
         this.spawnTimer += dt;
         this.survivalTime += dt;
-        
+
         if (!this.survivorAwarded && this.survivalTime > 300000) { // 5 minutes
             this.survivorAwarded = true;
             this.achievements.onEvent('time_survived', { time: 300 });
@@ -207,6 +214,13 @@ export class Game {
                     if (!w.isTargeted && w.scramble) w.scramble();
                 });
             }
+        }
+
+        // Handle Sigil Event Time
+        if (this.sigilActive) {
+            this.updateSigilEvent(dt);
+            // Freeze everything else while Sigil QTE is active
+            return;
         }
 
         // Pocket Dimension fade
@@ -661,11 +675,12 @@ export class Game {
 
         const text = this.dictionary.getWordForDifficulty(this.difficulty);
 
-        // 10% chance for Armored, 10% chance for Ghost
+        // 10% chance for Armored, 10% chance for Ghost, 3% chance for Sigil
         let variant = 'normal';
         const rand = Math.random();
-        if (rand < 0.1) variant = 'armored';
-        else if (rand < 0.2) variant = 'ghost';
+        if (rand < 0.03) variant = 'sigil';
+        else if (rand < 0.13) variant = 'armored';
+        else if (rand < 0.23) variant = 'ghost';
 
         const margin = 100;
         let bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
@@ -684,7 +699,14 @@ export class Game {
             bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
         }
 
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50, gameMode: this.gameMode });
+        let wordSpeedMultiplier = this.currentSpeedMultiplier;
+
+        // Cryomancer Discipline: Slower words
+        if (this.stats && this.stats.mageClass === 'Cryomancer') {
+            wordSpeedMultiplier *= 0.85; // 15% slower
+        }
+
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, wordSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50, gameMode: this.gameMode });
         this.words.push(newWord);
     }
 
@@ -740,6 +762,13 @@ export class Game {
 
     handleKeyDown(e) {
         if (!this.isRunning) return;
+
+        // If a Sigil Event is active, hijack all input
+        if (this.sigilActive) {
+            if (e.preventDefault) e.preventDefault();
+            this.handleSigilInput(e);
+            return;
+        }
 
         // Check for Ultimate Spell (Tab or Enter key)
         if (e.key === 'Tab' || e.key === 'Enter') {
@@ -803,6 +832,13 @@ export class Game {
                 word.dying = true; // Let the animation play instead of instant splice
                 this.audio.playExplosion();
                 this.floatingTexts.push(new FloatingText(`+${word.text.length * 10}`, word.x, word.y - 15 * word.scale, "#00e5ff", 28));
+
+                // Check for Arcane Sigil QTE
+                if (word.variant === 'sigil' && word.mistakesMade === 0 && !this.isBossPhase) {
+                    this.startSigilEvent();
+                } else if (word.variant === 'sigil') {
+                    this.floatingTexts.push(new FloatingText(`Sigil Lost... (Mistakes Made)`, word.x, word.y - 30 * word.scale, "#ff4b4b", 20));
+                }
 
                 // Increase explosion size based on combo
                 const comboBonus = Math.min(this.stats.combo, 50) / 50;
@@ -883,6 +919,14 @@ export class Game {
             this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
             this.stats.updateHUD();
             this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#FF5722', '#FFE0B2', '#E64A19'] }, 1.5);
+        }
+
+        // Chronomancer Discipline Master of Time: Flat refund of 50 mana
+        if (this.stats.mageClass === 'Chronomancer') {
+            this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + 50);
+            this.stats.updateHUD();
+            // Golden chronomancer particles
+            this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#ffd700', '#ffeb3b', '#fff9c4'] }, 1.0);
         }
 
         this.audio.playExplosion();
@@ -985,9 +1029,158 @@ export class Game {
             if (!tooClose) break;
             bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
         }
+        // Use _spawnSingleWord so the boss counter is NOT incremented
+        let wordSpeedMultiplier = this.currentSpeedMultiplier;
+
+        // Cryomancer Discipline: Slower words
+        if (this.stats && this.stats.mageClass === 'Cryomancer') {
+            wordSpeedMultiplier *= 0.85; // 15% slower
+        }
         const text = this.dictionary.getRandomWord('easy');
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, targetX, targetY, { variant: 'swarm', x: bestX, y: -50 });
+        const newWord = new Word(text, this.canvas.width, this.canvas.height, wordSpeedMultiplier, targetX, targetY, { variant: 'swarm', x: bestX, y: -50 });
         this.words.push(newWord);
+    }
+
+    // ── Arcane Sigil QTE Methods ────────────────────────────────────────────
+
+    startSigilEvent() {
+        if (this.sigilActive) return; // Prevent overlapping events
+        this.sigilActive = true;
+        this.sigilInputs = [];
+
+        // Generate random sequence of 4 arrows (Up=W, Down=S, Left=A, Right=D)
+        const possibleKeys = ['w', 'a', 's', 'd'];
+        const sequenceLength = 4;
+        this.sigilSequence = [];
+        for (let i = 0; i < sequenceLength; i++) {
+            this.sigilSequence.push(possibleKeys[Math.floor(Math.random() * possibleKeys.length)]);
+        }
+
+        this.sigilTimer = 0;
+        this.sigilMaxTime = 3000; // 3 seconds to complete
+
+        // UI Updates
+        const container = document.getElementById('sigil-event-container');
+        const prompts = document.getElementById('sigil-prompts');
+        if (container && prompts) {
+            container.classList.remove('hidden');
+            this.renderSigilPrompts();
+        }
+
+        this.audio.playLevelUp(); // Temporary sound queue
+        this.floatingTexts.push(new FloatingText("SIGIL ACTIVATED!", this.canvas.width / 2, this.canvas.height / 2 - 100, "#00e5ff", 36));
+
+        // Darken the background to focus on UI
+        this.blindTimer = this.sigilMaxTime;
+    }
+
+    renderSigilPrompts() {
+        const prompts = document.getElementById('sigil-prompts');
+        if (!prompts) return;
+        prompts.innerHTML = '';
+
+        const arrowMap = { 'w': '↑', 'a': '←', 's': '↓', 'd': '→' };
+
+        this.sigilSequence.forEach((key, index) => {
+            const span = document.createElement('span');
+            span.innerText = arrowMap[key];
+            if (index < this.sigilInputs.length) {
+                // Already successfully pressed
+                span.style.color = '#00e5ff';
+                span.style.textShadow = '0 0 10px #00e5ff';
+                span.style.transform = 'scale(1.2)';
+            } else if (index === this.sigilInputs.length) {
+                // Next required key
+                span.style.color = '#ffffff';
+                span.style.animation = 'pulse 1s infinite';
+            } else {
+                // Pending key
+                span.style.color = 'rgba(255, 255, 255, 0.3)';
+            }
+            prompts.appendChild(span);
+        });
+    }
+
+    updateSigilEvent(dt) {
+        this.sigilTimer += dt;
+
+        // Update timer bar UI
+        const bar = document.getElementById('sigil-timer-bar');
+        if (bar) {
+            const pct = Math.max(0, 100 - (this.sigilTimer / this.sigilMaxTime) * 100);
+            bar.style.width = pct + '%';
+        }
+
+        if (this.sigilTimer >= this.sigilMaxTime) {
+            this.failSigilEvent("Time Expired!");
+        }
+    }
+
+    handleSigilInput(e) {
+        let key = e.key.toLowerCase();
+        // Map arrow keys to WASD for flexibility
+        if (key === 'arrowup') key = 'w';
+        if (key === 'arrowdown') key = 's';
+        if (key === 'arrowleft') key = 'a';
+        if (key === 'arrowright') key = 'd';
+
+        const expectedKey = this.sigilSequence[this.sigilInputs.length];
+
+        if (key === expectedKey) {
+            this.sigilInputs.push(key);
+            this.audio.playTypeSound();
+            this.renderSigilPrompts();
+
+            if (this.sigilInputs.length === this.sigilSequence.length) {
+                this.succeedSigilEvent();
+            }
+        } else {
+            this.audio.playErrorSound();
+            this.failSigilEvent("Wrong Input!");
+        }
+    }
+
+    failSigilEvent(reason) {
+        this.sigilActive = false;
+        this.blindTimer = 0; // Remove dark background overlay
+
+        const container = document.getElementById('sigil-event-container');
+        if (container) container.classList.add('hidden');
+
+        this.floatingTexts.push(new FloatingText(`Sigil Failed: ${reason}`, this.canvas.width / 2, this.canvas.height / 2, "#ff4b4b", 36));
+        this.audio.playShatter();
+        this._triggerShake(10, 300);
+    }
+
+    succeedSigilEvent() {
+        this.sigilActive = false;
+        this.blindTimer = 0;
+
+        const container = document.getElementById('sigil-event-container');
+        if (container) container.classList.add('hidden');
+
+        this.floatingTexts.push(new FloatingText("SIGIL UNLEASHED!", this.canvas.width / 2, this.canvas.height / 2, "#ffd700", 48));
+        this.stats.addScore(500); // Massive point bonus
+        this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + 100); // Full mana restore
+        this.stats.updateHUD();
+
+        // Screen clear effect similar to Ultimate but free
+        this.audio.playExplosion();
+        this._triggerShake(40, 1000);
+        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffd700', '#ffffff'] }, 5.0);
+
+        for (let i = this.words.length - 1; i >= 0; i--) {
+            const word = this.words[i];
+            if (word.dying || word.isBossAttack) continue;
+            this.stats.addScore(word.text.length, false);
+            word.dying = true;
+            this.spawnExplosion(word.x, word.y, word.elementColors, 1.0);
+            if (word === this.targetedWord) this.targetedWord = null;
+        }
+
+        if (this.isBossPhase && this.boss && !this.boss.isDead) {
+            for (let i = 0; i < 5; i++) this.boss.takeDamage();
+        }
     }
 
     triggerGameOver() {

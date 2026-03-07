@@ -197,36 +197,96 @@ export const wordList = {
   ]
 };
 
+export const codingList = {
+  easy: [
+    "let", "var", "for", "if", "new", "map", "set", "get", "put", "div",
+    "css", "html", "api", "url", "req", "res", "dom", "app", "gui", "src",
+    "bin", "env", "git", "npm", "run", "dev", "int", "char", "bool", "str",
+    "num", "log", "try", "catch", "push", "pop", "shift", "split", "join",
+    "bind", "call", "apply", "this", "self", "true", "false", "null", "NaN",
+    "doc", "sys", "net", "web", "ssh", "ssl", "tcp", "udp", "hex", "rgb"
+  ],
+  medium: [
+    "function", "return", "import", "export", "default", "class", "extends",
+    "super", "module", "exports", "require", "console", "window", "document",
+    "string", "number", "boolean", "object", "array", "symbol", "bigint",
+    "promise", "resolve", "reject", "async", "await", "yield", "switch",
+    "case", "break", "continue", "typeof", "instanceof", "finally", "throws",
+    "public", "private", "protected", "static", "interface", "implements",
+    "package", "public", "void", "main", "args", "printf", "scanf", "malloc",
+    "sizeof", "struct", "pointer", "reference", "include", "define", "ifndef",
+    "pragma", "inline", "virtual", "override", "template", "namespace"
+  ],
+  hard: [
+    "constructor", "destructor", "prototype", "__proto__", "undefined",
+    "addEventListener", "removeEventListener", "stopPropagation", "preventDefault",
+    "getElementById", "querySelector", "createElement", "appendChild",
+    "setTimeout", "setInterval", "clearTimeout", "clearInterval", "requestAnimationFrame",
+    "XMLHttpRequest", "fetch", "Headers", "Response", "FormData", "Blob",
+    "FileReader", "ArrayBuffer", "DataView", "Int8Array", "Uint8Array",
+    "Float32Array", "Float64Array", "JSON.stringify", "JSON.parse", "Object.assign",
+    "Object.keys", "Object.values", "Object.entries", "Array.isArray", "Math.random",
+    "Math.floor", "Math.ceil", "Math.round", "String.fromCharCode", "encodeURIComponent",
+    "decodeURIComponent", "localStorage", "sessionStorage", "indexedDB"
+  ],
+  epic: [
+    "<!DOCTYPE html>", "document.querySelectorAll('.class')",
+    "() => { console.log('es6'); }", "function* generator() {}",
+    "try { await fetch(url); } catch (e) {}", "const [state, setState] = useState(null);",
+    "import { Component } from 'react';", "module.exports = { start: true };",
+    "if (typeof window !== 'undefined')", "Array.prototype.slice.call(arguments)",
+    "Object.prototype.hasOwnProperty.call(obj, prop)", "Regex.test(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$/i)",
+    "document.body.insertAdjacentHTML('beforeend', str)", "return new Promise((resolve, reject) => {})",
+    "for (let i = 0; i < arr.length; i++) {", "const { param1, param2, ...rest } = obj;",
+    "SELECT * FROM users WHERE id = ?", "INSERT INTO table (col) VALUES (val)",
+    "UPDATE table SET col = val WHERE id = ?", "DELETE FROM table WHERE id = ?"
+  ],
+  paragraphs: [
+    "function debounce(func, wait) {\n  let timeout;\n  return function executedFunction(...args) {\n    const later = () => {\n      clearTimeout(timeout);\n      func(...args);\n    };\n    clearTimeout(timeout);\n    timeout = setTimeout(later, wait);\n  };\n}",
+    "class EventEmitter {\n  constructor() {\n    this.events = {};\n  }\n  on(eventName, fn) {\n    if(!this.events[eventName]) this.events[eventName] = [];\n    this.events[eventName].push(fn);\n  }\n  emit(eventName, data) {\n    const event = this.events[eventName];\n    if(event) event.forEach(fn => fn.call(null, data));\n  }\n}",
+    "const quickSort = (arr) => {\n  if (arr.length <= 1) return arr;\n  let pivot = arr[0];\n  let left = arr.filter(x => x < pivot);\n  let right = arr.filter(x => x > pivot);\n  return [...quickSort(left), pivot, ...quickSort(right)];\n};",
+    "async function fetchUserData(userId) {\n  try {\n    const response = await fetch(`/api/users/${userId}`);\n    if (!response.ok) throw new Error('Network response was not ok');\n    const data = await response.json();\n    return data;\n  } catch (error) {\n    console.error('Fetch error:', error);\n    throw error;\n  }\n}"
+  ]
+};
+
 export class WordDictionary {
   constructor() {
-    this.words = wordList;
+    this.dictionaries = { classic: wordList, coding: codingList };
+    this.activeDictionary = 'classic';
     this._queues = {};
     this.seed = null;
     this._currentSeed = 0;
   }
 
+  setDictionary(type) {
+    if (this.dictionaries[type]) {
+      this.activeDictionary = type;
+      this._queues = {};
+    }
+  }
+
   setSeed(seedStr) {
     if (!seedStr) {
-        this.seed = null;
-        return;
+      this.seed = null;
+      return;
     }
     this.seed = seedStr;
     let h = 0xdeadbeef;
-    for(let i = 0; i < seedStr.length; i++)
-        h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
+    for (let i = 0; i < seedStr.length; i++)
+      h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
     this._currentSeed = (h ^ h >>> 16) >>> 0;
     // clear queues so next draw is seeded
     this._queues = {};
   }
 
   _random() {
-      if (this.seed) {
-          let t = this._currentSeed += 0x6D2B79F5;
-          t = Math.imul(t ^ t >>> 15, t | 1);
-          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-          return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      }
-      return Math.random();
+    if (this.seed) {
+      let t = this._currentSeed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+    return Math.random();
   }
 
   _shuffle(arr) {
@@ -240,7 +300,9 @@ export class WordDictionary {
 
   _drawFromQueue(tier) {
     if (!this._queues[tier] || this._queues[tier].length === 0) {
-      this._queues[tier] = this._shuffle(this.words[tier] || this.words.easy);
+      const currentList = this.dictionaries[this.activeDictionary][tier] || this.dictionaries['classic'][tier];
+      const arr = [...currentList];
+      this._queues[tier] = this._shuffle(arr);
     }
     return this._queues[tier].pop();
   }
@@ -277,7 +339,7 @@ export class WordDictionary {
   }
 
   getRandomParagraph() {
-    const list = this.words.paragraphs;
+    const list = this.dictionaries[this.activeDictionary].paragraphs || this.dictionaries['classic'].paragraphs;
     return list[Math.floor(this._random() * list.length)];
   }
 
@@ -287,7 +349,8 @@ export class WordDictionary {
 
   _buildScribePool() {
     // Mix of easy + medium for a balanced timed mode experience
-    return this._shuffle([...this.words.easy, ...this.words.medium]);
+    const scribeList = this.dictionaries[this.activeDictionary];
+    return this._shuffle([...scribeList.easy, ...scribeList.medium]);
   }
 }
 

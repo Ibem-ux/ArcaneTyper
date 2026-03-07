@@ -8,7 +8,7 @@ export class Word {
         this.variant = options.variant || 'normal';
         this.gameMode = options.gameMode || 'classic';
         this.typed = "";
-        
+
         if (this.variant === 'cursed') {
             this.text = text.split('').reverse().join('');
             this.untyped = this.text;
@@ -16,7 +16,7 @@ export class Word {
             this.text = text;
             this.untyped = text;
         }
-        
+
         this.mistakesMade = 0;
 
         // Caching text measurements
@@ -248,6 +248,26 @@ export class Word {
             ctx.font = 'bold 32px Cinzel, serif';
         }
 
+        // Arcane Sigil word
+        if (this.variant === 'sigil') {
+            ctx.lineWidth = 3;
+            // Pulsing cyan glow
+            const pulse = 0.5 + Math.sin(performance.now() * 0.005) * 0.5;
+            ctx.strokeStyle = `rgba(0, 229, 255, ${0.5 + pulse * 0.5})`;
+            ctx.shadowColor = '#00e5ff';
+            ctx.shadowBlur = 10 + pulse * 10;
+            ctx.stroke();
+
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '16px serif';
+            ctx.fillText('✧', boxX - 25, textYOffset);
+
+            // Restore default shadow/font
+            ctx.shadowBlur = this.isTargeted ? 15 : 0;
+            ctx.shadowColor = this.isTargeted ? 'rgba(255, 215, 0, 0.8)' : 'transparent';
+            ctx.font = 'bold 32px Cinzel, serif';
+        }
+
         // Elemental word (glow based on element)
         if (this.variant === 'elemental') {
             ctx.lineWidth = 2;
@@ -275,11 +295,11 @@ export class Word {
             if (this.variant === 'elemental') {
                 ctx.fillStyle = this.isTargeted ? this.elementColors.untypedTargeted : this.elementColors.untyped;
             } else if (this.variant === 'cursed') {
-                ctx.fillStyle = this.isTargeted ? '#ff4b4b' : '#ff7b54'; 
+                ctx.fillStyle = this.isTargeted ? '#ff4b4b' : '#ff7b54';
             } else {
                 ctx.fillStyle = this.isTargeted ? '#ffd700' : '#ffffff';
             }
-            
+
             ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
         }
 
