@@ -253,7 +253,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const logoutBtn = document.getElementById('logout-btn');
   const profileNickname = document.getElementById('profile-nickname');
   const profileUsernameUI = document.getElementById('profile-username');
-  const profileClassUI = document.getElementById('profile-class');
 
   // Magical Toast Container
   const toastContainer = document.getElementById('toast-container');
@@ -319,13 +318,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                   const { data: { session } } = await supabase.auth.getSession();
                   if (session) {
                     profileUsernameUI.innerText = session.user.email;
-                    profileClassUI.innerText = session.user.user_metadata?.discipline || 'Scholar';
+                    mageClassSelect.value = session.user.user_metadata?.discipline || 'Novice';
                   }
                 }
               } catch (e) { console.warn("Supabase auth check failed."); }
             } else {
               profileUsernameUI.innerText = "Wandering Guest";
-              profileClassUI.innerText = "None (Unenrolled)";
+              mageClassSelect.value = "Novice";
             }
 
             profileNickname.innerText = game.stats.mageName || "Unknown Mage";
@@ -1152,9 +1151,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (session.user.user_metadata && session.user.user_metadata.discipline) {
-          profileClassUI.innerText = session.user.user_metadata.discipline;
+          mageClassSelect.value = session.user.user_metadata.discipline;
         } else {
-          profileClassUI.innerText = 'The Scholar (Balanced)'; // Legacy default
+          mageClassSelect.value = 'Novice'; // Default
         }
 
         // Fetch Run History for Graph

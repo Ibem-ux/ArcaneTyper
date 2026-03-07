@@ -64,6 +64,18 @@
 
       <!-- Start Menu -->
       <div id="start-menu" class="overlay-menu active">
+        <!-- Top Right Controls (Spellbook) -->
+        <div id="top-right-controls"
+          style="position: absolute; top: 20px; right: 20px; z-index: 10; pointer-events: auto;">
+          <div class="difficulty-selector"
+            style="margin-bottom: 0; background: rgba(0, 0, 0, 0.6); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.2);">
+            <label for="dictionary-select" style="font-size: 0.8rem;">Spellbook:</label>
+            <select id="dictionary-select">
+              <option value="classic" selected>Classic (English)</option>
+              <option value="coding">Incantation (Coding)</option>
+            </select>
+          </div>
+        </div>
         <div
           style="display: flex; flex-direction: column; align-items: center; gap: clamp(5px, 1vh, 15px); width: 100%; z-index: 5; pointer-events: none;">
           <h1>ARCANE<span class="highlight">TYPER</span></h1>
@@ -112,22 +124,7 @@
                 <option value="blind">Blind (Hidden Text)</option>
               </select>
             </div>
-            <div class="difficulty-selector" style="margin-bottom: 0;">
-              <label for="dictionary-select">Spellbook:</label>
-              <select id="dictionary-select">
-                <option value="classic" selected>Classic (English)</option>
-                <option value="coding">Incantation (Coding)</option>
-              </select>
-            </div>
-            <div class="difficulty-selector" style="margin-bottom: 0;">
-              <label for="mage-class-select">Discipline:</label>
-              <select id="mage-class-select">
-                <option value="Novice" selected>Novice</option>
-                <option value="Pyromancer">Pyromancer</option>
-                <option value="Cryomancer">Cryomancer</option>
-                <option value="Chronomancer">Chronomancer</option>
-              </select>
-            </div>
+
           </div>
           <div class="button-group"
             style="display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 15px); width: 100%; max-width: 300px;">
@@ -842,8 +839,14 @@
 
             <div style="text-align: center;">
               <p style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase;">
-                Discipline</p>
-              <p id="profile-class" style="color: #00e5ff; font-size: 1.2rem; margin-top: 5px;">Novice</p>
+                Discipline (Class)</p>
+              <select id="mage-class-select"
+                style="background: transparent; border: none; color: #00e5ff; font-size: 1.2rem; margin-top: 5px; font-family: var(--font-family); outline: none; text-align: center; cursor: pointer; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); font-weight: bold;">
+                <option value="Novice" style="background: var(--bg-deep); text-shadow: none;">Novice</option>
+                <option value="Pyromancer" style="background: var(--bg-deep); text-shadow: none;">Pyromancer</option>
+                <option value="Cryomancer" style="background: var(--bg-deep); text-shadow: none;">Cryomancer</option>
+                <option value="Chronomancer" style="background: var(--bg-deep); text-shadow: none;">Chronomancer</option>
+              </select>
             </div>
 
             <!-- Run History Graph -->
