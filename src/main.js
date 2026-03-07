@@ -43,6 +43,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const patchNotes = [
     {
+      version: "v2.2.4",
+      date: "March 7, 2026",
+      desc: "Dashboard UI Polish & Layout Simplification",
+      changes: [
+        "Moved Spellbook (dictionary selector) to the top-right corner of the main dashboard for quicker access.",
+        "Removed Spellbook and Discipline from the central selectors to declutter the dashboard.",
+        "Moved Discipline (class selector) into the Mage Profile panel as an interactive dropdown.",
+        "Fixed: Multiple layout-breaking HTML structure errors that caused the dashboard to go blank."
+      ]
+    },
+    {
       version: "v2.2.3",
       date: "March 3, 2026",
       desc: "Guest Mode, Magical Toasts & Scribe Improvements",
