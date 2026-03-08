@@ -2,8 +2,11 @@ import './style.css';
 import { Game } from './Game.js';
 import { Leaderboard } from './Leaderboard.js';
 import { Scribe } from './Scribe.js';
-import { supabase } from './supabaseClient.js';
 import { Duel } from './Duel.js';
+import { MagicalToast } from './ui/MagicalToast.js';
+import { ProfileUI } from './ui/ProfileUI.js';
+import { AuthUI } from './ui/AuthUI.js';
+import { MenuUI } from './ui/MenuUI.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Ultra-strict font preloader for Canvas
@@ -22,6 +25,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const leaderboard = new Leaderboard();
   const scribe = new Scribe(game.dictionary, game.stats);
 
+  MagicalToast.init();
+  const profileUI = new ProfileUI(game);
+  const authUI = new AuthUI(game, document.getElementById('start-menu'), document.getElementById('profile-menu'));
+  const menuUI = new MenuUI(game, document.getElementById('start-menu'));
+
+  menuUI.init();
+
   // UI Elements
   const hud = document.getElementById('hud');
   const startMenu = document.getElementById('start-menu');
@@ -35,133 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openAchievementsBtn = document.getElementById('open-achievements-icon-btn');
   const closeAchievementsBtn = document.getElementById('close-achievements-btn');
   const achievementsList = document.getElementById('achievements-list');
-  // Patch Board
-  const patchBoardMenu = document.getElementById('patch-board-menu');
-  const openPatchBoardBtn = document.getElementById('open-patch-board-btn');
-  const closePatchBoardBtn = document.getElementById('close-patch-board-btn');
-  const patchNotesContainer = document.getElementById('patch-notes-container');
-
-  const patchNotes = [
-    {
-      version: "v2.2.4",
-      date: "March 7, 2026",
-      desc: "Dashboard UI Polish & Layout Simplification",
-      changes: [
-        "Moved Spellbook (dictionary selector) to the top-right corner of the main dashboard for quicker access.",
-        "Removed Spellbook and Discipline from the central selectors to declutter the dashboard.",
-        "Moved Discipline (class selector) into the Mage Profile panel as an interactive dropdown.",
-        "Fixed: Multiple layout-breaking HTML structure errors that caused the dashboard to go blank."
-      ]
-    },
-    {
-      version: "v2.2.3",
-      date: "March 3, 2026",
-      desc: "Guest Mode, Magical Toasts & Scribe Improvements",
-      changes: [
-        "Added Guest Account system — play without registering using a temporary Mage Title.",
-        "Guests can access Arcane Survival, The Scribe's Trial, and the Hall of Fame.",
-        "Guest scores are submitted to the leaderboard under their chosen alias.",
-        "Replaced all browser alert() dialogs with animated Magical Toast notifications.",
-        "Added Escape key support to instantly dismiss toasts and close the Duel Lobby.",
-        "Fixed: Dashboard blur/unclickable state after returning from Profile or Duel Lobby.",
-        "Fixed: Scribe mode and duration dropdowns were losing focus immediately when clicked.",
-        "Fixed: Scribe Timed mode now uses full paragraphs instead of random disconnected words.",
-        "Expanded Arcane Dictionary: ~150 new words and 15 new lore paragraphs added."
-      ]
-    },
-    {
-      version: "v2.2.2",
-      date: "February 28, 2026",
-      desc: "UI Polish & Layout Adjustments",
-      changes: [
-        "Fixed the overlapping layout in the Mage Profile.",
-        "Adjusted the Start Menu layout to prevent scrolling on standard displays.",
-        "Fixed Mage and Tower silhouette hover interactions."
-      ]
-    },
-    {
-      version: "v2.2.1",
-      date: "February 28, 2026",
-      desc: "Emergency Patch - Mage Duel Fixes",
-      changes: [
-        "Fixed an issue where creating a Mage Duel lobby would immediately start the game by oneself.",
-        "Corrected the Suppabase Realtime presence payload evaluation for the local host.",
-        "Added this enchanted Patch Board for easier access to updates!",
-        "Improved layout responsiveness on mobile devices (Silhouettes format to edges).",
-        "Added 'Enter' key support as an alternative to 'Tab' for casting Supernova."
-      ]
-    },
-    {
-      version: "v2.2.0",
-      date: "February 27, 2026",
-      desc: "Multiplayer Real-Time Mage Duels",
-      changes: [
-        "Introduced 1v1 Mage Duels.",
-        "Battle other typers in real time using 6-character room codes.",
-        "Live opponent tracking (Score, WPM, Barriers) powered by Supabase Realtime."
-      ]
-    },
-    {
-      version: "v2.1.0",
-      date: "February 23, 2026",
-      desc: "The Scribe's Trial & Canvas Engine",
-      changes: [
-        "New Practice Mode: The Scribe's Trial with timed modes (15s, 30s, 60s).",
-        "Added classic continuous-flow spaced-word mechanics and graphing.",
-        "Overhauled the game to run on an HTML5 `<canvas>` engine for better performance."
-      ]
-    }
-  ];
-
-  function populatePatchBoard() {
-    patchNotesContainer.innerHTML = '';
-    patchNotes.forEach(patch => {
-      const item = document.createElement('div');
-      item.className = 'patch-item';
-
-      const header = document.createElement('div');
-      header.className = 'patch-header';
-      header.innerHTML = `<span class="patch-version">${patch.version}</span><span class="patch-date">${patch.date}</span>`;
-
-      const body = document.createElement('div');
-      body.className = 'patch-body';
-      const p = document.createElement('p');
-      p.innerText = patch.desc;
-      const ul = document.createElement('ul');
-
-      patch.changes.forEach(change => {
-        const li = document.createElement('li');
-        li.innerText = change;
-        ul.appendChild(li);
-      });
-
-      body.appendChild(p);
-      body.appendChild(ul);
-      item.appendChild(header);
-      item.appendChild(body);
-      patchNotesContainer.appendChild(item);
-    });
-  }
-
-  // Populate it once on load
-  populatePatchBoard();
-
-  openPatchBoardBtn.addEventListener('click', () => {
-    startMenu.classList.remove('active');
-    startMenu.classList.add('hidden');
-    patchBoardMenu.classList.remove('hidden');
-    // small delay to let display:flex apply before opacity transition
-    setTimeout(() => {
-      patchBoardMenu.classList.add('active');
-    }, 10);
-  });
-
-  closePatchBoardBtn.addEventListener('click', () => {
-    patchBoardMenu.classList.remove('active');
-    patchBoardMenu.classList.add('hidden');
-    startMenu.classList.remove('hidden');
-    startMenu.classList.add('active');
-  });
 
   // Duel UI
   const duelLobbyMenu = document.getElementById('duel-lobby-menu');
@@ -181,10 +64,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const duelResultSubtitle = document.getElementById('duel-result-subtitle');
   const duelResMyScore = document.getElementById('duel-res-my-score');
   const duelResOppScore = document.getElementById('duel-res-opp-score');
-
-  // Menu Stats
-  const menuBestScore = document.getElementById('menu-best-score');
-  const menuBestWpm = document.getElementById('menu-best-wpm');
 
   // Game Over Stats
   const goScore = document.getElementById('go-score');
@@ -230,7 +109,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const difficultySelect = document.getElementById('difficulty-select');
   const modeSelect = document.getElementById('mode-select');
   const dictionarySelect = document.getElementById('dictionary-select');
-  const mageClassSelect = document.getElementById('mage-class-select');
   const leaderboardDifficultyFilter = document.getElementById('leaderboard-difficulty-filter');
 
   // WPM Graph
@@ -239,38 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Mobile Support
   const mobileInput = document.getElementById('mobile-input');
   const mobileNovaBtn = document.getElementById('mobile-nova-btn');
-
-  // Mage Card / Character Creation UI
-  const ccMenu = document.getElementById('character-creation-menu');
-  const ccUsername = document.getElementById('cc-username');
-  const ccName = document.getElementById('cc-name');
-  const ccNicknameContainer = document.getElementById('cc-nickname-container');
-  const ccPassword = document.getElementById('cc-password');
-  const ccClass = document.getElementById('cc-class');
-  const ccClassContainer = document.getElementById('cc-class-container');
-  const ccCreateBtn = document.getElementById('cc-create-btn');
-  const ccErrorMsg = document.getElementById('cc-error-msg');
-  const ccToggleMode = document.getElementById('cc-toggle-mode');
-  const ccTitle = document.getElementById('cc-title');
-  const ccSubtitle = document.getElementById('cc-subtitle');
-  const ccEmailContainer = document.getElementById('cc-email-container');
-  const ccEmail = document.getElementById('cc-email');
-  const ccUsernameLabel = document.getElementById('cc-username-label');
-  const togglePasswordBtn = document.getElementById('toggle-password-btn');
-
-  // Profile Menu UI
-  const profileMenu = document.getElementById('profile-menu');
-  const closeProfileBtn = document.getElementById('close-profile-btn');
-  const logoutBtn = document.getElementById('logout-btn');
-  const profileNickname = document.getElementById('profile-nickname');
-  const profileUsernameUI = document.getElementById('profile-username');
-
-  // Magical Toast Container
-  const toastContainer = document.getElementById('toast-container');
-
-  // Guest UI
-  const ccGuestBtn = document.getElementById('cc-guest-btn');
-  const ccGuestCancelMode = document.getElementById('cc-guest-cancel-mode');
 
   let pendingStats = null;
   let pendingScribeStats = null;
@@ -285,330 +131,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Global State
   let isGuest = false;
 
-  // ── Authentication & Initialization ───────────────────────────────────────
-
-  let isLoginMode = true;
-  let isGuestMode = false;
-
-  function showMagicalToast(message, duration = 4000) {
-    if (!toastContainer) return;
-
-    const toast = document.createElement('div');
-    toast.className = 'magical-toast';
-    toast.innerHTML = message;
-
-    toastContainer.appendChild(toast);
-
-    // Auto-remove after duration
-    setTimeout(() => {
-      toast.classList.add('fade-out');
-      // Remove from DOM after transition finishes
-      setTimeout(() => {
-        if (toastContainer.contains(toast)) {
-          toastContainer.removeChild(toast);
-        }
-      }, 500);
-    }, duration);
-  }
-
-  async function checkSession() {
-    startMenu.classList.add('hidden');
-    startMenu.classList.remove('active');
-
-    if (!supabase) {
-      console.warn("Supabase not configured. Bypassing auth.");
-      if (!game.stats.mageName) {
-        showCharacterCreation();
-      } else {
-        const mageAvatarBg = document.getElementById('background-mage');
-        if (mageAvatarBg) {
-          mageAvatarBg.addEventListener('click', async () => {
-            if (!isGuest) {
-              try {
-                if (supabase) {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (session) {
-                    profileUsernameUI.innerText = session.user.email;
-                    mageClassSelect.value = session.user.user_metadata?.discipline || 'Novice';
-                  }
-                }
-              } catch (e) { console.warn("Supabase auth check failed."); }
-            } else {
-              profileUsernameUI.innerText = "Wandering Guest";
-              mageClassSelect.value = "Novice";
-            }
-
-            profileNickname.innerText = game.stats.mageName || "Unknown Mage";
-
-            startMenu.classList.remove('active');
-            startMenu.classList.add('hidden');
-            profileMenu.classList.remove('hidden');
-            profileMenu.classList.add('active');
-          });
-        }
-        startMenu.classList.remove('hidden');
-        startMenu.classList.add('active');
-      }
-      return;
-    }
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (session) {
-      if (session.user.user_metadata && session.user.user_metadata.mage_title) {
-        game.stats.mageName = session.user.user_metadata.mage_title;
-        game.stats.saveProgression();
-      } else if (!game.stats.mageName && session.user.email) {
-        // Fallback for legacy accounts
-        game.stats.mageName = session.user.email.split('@')[0];
-        game.stats.saveProgression();
-      }
-
-      const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', session.user.id).single();
-      if (profile) {
-        game.stats.totalXP = profile.total_xp || 0;
-        game.stats.playerLevel = Math.floor(Math.sqrt(game.stats.totalXP / 500)) + 1;
-        game.stats.saveProgression();
-      }
-      updateProgressionUI();
-
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-    } else {
-      showCharacterCreation();
-    }
-  }
-
-  function showCharacterCreation() {
-    startMenu.classList.add('hidden');
-    startMenu.classList.remove('active');
-
-    ccMenu.classList.remove('hidden');
-    ccMenu.classList.add('active');
-    ccUsername.focus();
-  }
-
-  // Password Visibility Toggle
-  if (togglePasswordBtn && ccPassword) {
-    togglePasswordBtn.addEventListener('click', () => {
-      if (ccPassword.type === 'password') {
-        ccPassword.type = 'text';
-        togglePasswordBtn.classList.add('revealed');
-        togglePasswordBtn.title = "Hide Password";
-      } else {
-        ccPassword.type = 'password';
-        togglePasswordBtn.classList.remove('revealed');
-        togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
-      }
-    });
-  }
-
-  if (ccToggleMode) {
-    ccToggleMode.addEventListener('click', (e) => {
-      e.preventDefault();
-      isLoginMode = !isLoginMode;
-
-      ccErrorMsg.innerText = '';
-
-      if (isLoginMode) {
-        ccTitle.innerText = "MAGE RECOGNITION";
-        ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
-        ccClassContainer.style.display = 'none';
-        ccNicknameContainer.style.display = 'none';
-        ccCreateBtn.innerText = "ENTER LIBRARY";
-        ccToggleMode.innerText = "I need to register a new Mage Card.";
-        ccEmailContainer.style.display = 'none';
-        ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
-        ccUsername.placeholder = "e.g. mage@library.com";
-      } else {
-        ccTitle.innerText = "MAGE REGISTRATION";
-        ccSubtitle.innerText = "Forge your identity before entering the library.";
-        ccClassContainer.style.display = 'flex';
-        ccNicknameContainer.style.display = 'flex';
-        ccEmailContainer.style.display = 'flex';
-        ccUsernameLabel.innerText = "True Name (Username):";
-        ccUsername.placeholder = "e.g. invoker123";
-        ccCreateBtn.innerText = "SEAL MAGE CARD";
-        ccToggleMode.innerText = "Already have a Mage Card?";
-      }
-    });
-  }
-
-  // --- GUEST UI FLOW ---
-  if (ccGuestBtn && ccGuestCancelMode) {
-    ccGuestBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      isGuestMode = true;
-      ccErrorMsg.innerText = '';
-
-      ccTitle.innerText = "GUEST ACCESS";
-      ccSubtitle.innerText = "Provide a temporary Mage Title.";
-
-      // Hide login/register fields
-      ccUsernameLabel.parentElement.style.display = 'none'; // username/email field
-      ccEmailContainer.style.display = 'none';
-      ccPassword.parentElement.parentElement.style.display = 'none'; // password field
-      ccClassContainer.style.display = 'none';
-
-      // Show only nickname field
-      ccNicknameContainer.style.display = 'flex';
-      ccName.placeholder = "e.g. Wandering Scribe";
-
-      ccCreateBtn.innerText = "ENTER AS GUEST";
-      ccGuestBtn.style.display = 'none';
-      ccToggleMode.style.display = 'none';
-      ccGuestCancelMode.style.display = 'block';
-    });
-
-    ccGuestCancelMode.addEventListener('click', (e) => {
-      e.preventDefault();
-      isGuestMode = false;
-      ccErrorMsg.innerText = '';
-
-      // Revert to login mode UI
-      isLoginMode = true;
-      ccTitle.innerText = "MAGE RECOGNITION";
-      ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
-
-      ccUsernameLabel.parentElement.style.display = 'flex';
-      ccPassword.parentElement.parentElement.style.display = 'flex';
-      ccNicknameContainer.style.display = 'none';
-      ccEmailContainer.style.display = 'none';
-      ccClassContainer.style.display = 'none';
-
-      ccCreateBtn.innerText = "ENTER LIBRARY";
-      ccGuestBtn.style.display = 'block';
-      ccToggleMode.style.display = 'block';
-      ccGuestCancelMode.style.display = 'none';
-    });
-  }
-
-  ccCreateBtn.addEventListener('click', async () => {
-    const username = ccUsername.value.trim().toLowerCase();
-    const displayName = ccName.value.trim();
-    const password = ccPassword ? ccPassword.value : '';
-    const discipline = ccClass ? ccClass.value : 'Scholar';
-
-    // Handle Guest Bypass
-    if (isGuestMode) {
-      if (!displayName) {
-        if (ccErrorMsg) ccErrorMsg.innerText = "A Guest must provide a temporary Title.";
-        return;
-      }
-      isGuest = true;
-      game.stats.mageName = "Guest " + displayName;
-      game.stats.saveProgression();
-
-      ccErrorMsg.innerText = '';
-      ccMenu.classList.add('hidden');
-      ccMenu.classList.remove('active');
-      startMenu.classList.remove('hidden');
-      startMenu.classList.add('active');
-      return;
-    }
-
-    // Standard Auth Flow
-    if (!username) {
-      if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must have a True Name (Login ID).";
-      return;
-    }
-
-    if (!isLoginMode && !displayName) {
-      if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must have a Title (Display Name).";
-      return;
-    }
-
-    const emailToUse = ccEmail && ccEmail.value.trim() ? ccEmail.value.trim() : '';
-
-    if (!isLoginMode && !emailToUse) {
-      if (ccErrorMsg) ccErrorMsg.innerText = "Registration requires an Owl Delivery (Email Address).";
-      return;
-    }
-
-    if (supabase) {
-      if (!password) {
-        if (ccErrorMsg) ccErrorMsg.innerText = "A Mage must provide their Secret Incantation (Password).";
-        return;
-      }
-
-      ccCreateBtn.disabled = true;
-      if (isLoginMode) {
-        // LOGIN
-        // If the username contains an '@', they entered their email directly. Use it.
-        // Otherwise, they entered their True Name, but we don't know their email.
-        // For security, Supabase requires the email to log in.
-        const isEmail = username.includes('@');
-        let loginEmail = isEmail ? username : '';
-
-        if (!isEmail) {
-          if (ccErrorMsg) ccErrorMsg.innerText = "To log in securely, please provide your Owl Delivery (Email) instead of your True Name.";
-          ccCreateBtn.disabled = false;
-          return;
-        }
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: loginEmail,
-          password: password,
-        });
-
-        ccCreateBtn.disabled = false;
-
-        if (error) {
-          if (ccErrorMsg) ccErrorMsg.innerText = error.message;
-          return;
-        }
-
-        if (data.user && data.user.user_metadata && data.user.user_metadata.mage_title) {
-          game.stats.mageName = data.user.user_metadata.mage_title;
-        }
-
-      } else {
-        // SIGN UP (Uses the provided real email address)
-        const { data, error } = await supabase.auth.signUp({
-          email: emailToUse,
-          password: password,
-          options: {
-            data: {
-              mage_title: displayName,
-              discipline: discipline,
-              true_name: username // Store the specific username alongside it just in case
-            }
-          }
-        });
-
-        ccCreateBtn.disabled = false;
-
-        if (error) {
-          if (error.message.toLowerCase().includes('rate limit')) {
-            console.warn("Supabase rate limit exceeded. Falling back to local profile.");
-            if (ccErrorMsg) ccErrorMsg.innerText = "The magical library is overwhelmed (Rate Limit). Granted temporary guest access.";
-            game.stats.mageName = displayName;
-            // Will proceed to local fallback flow
-          } else {
-            if (ccErrorMsg) ccErrorMsg.innerText = error.message;
-            return;
-          }
-        } else {
-          game.stats.mageName = displayName;
-        }
-      }
-    } else {
-      // Offline / Local fallback (No Supabase)
-      game.stats.mageName = isLoginMode ? username : displayName;
-    }
-
-    game.stats.saveProgression();
-
-    if (ccErrorMsg) ccErrorMsg.innerText = '';
-    ccMenu.classList.add('hidden');
-    ccMenu.classList.remove('active');
-
-    startMenu.classList.remove('hidden');
-    startMenu.classList.add('active');
+  authUI.init(() => {
+    profileUI.updateMenuStats();
   });
-
-  // Kick off the initial check
-  checkSession();
 
   // ========== ACHIEVEMENTS SYSTEM ==========
   const initTitle = localStorage.getItem('typerMaster_equippedTitle') || 'Apprentice';
@@ -689,33 +214,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Hook into in-game toasts
   game.achievements.onUnlockCallback = (def) => {
-    if (typeof showMagicalToast === 'function') {
-      showMagicalToast(`🏆 <b>Achievement Unlocked</b><br><span style="color: #f9a825;">${def.name}</span><br><span style="font-size: 0.8rem; color: var(--text-muted);">${def.title}</span>`, 4000);
-    }
+    MagicalToast.show(`🏆 <b>Achievement Unlocked</b><br><span style="color: #f9a825;">${def.name}</span><br><span style="font-size: 0.8rem; color: var(--text-muted);">${def.title}</span>`, 4000);
   };
 
-  function updateProgressionUI() {
-    if (!game.stats) return;
-    const levelEl = document.getElementById('menu-player-level');
-    const xpBarEl = document.getElementById('menu-xp-bar');
-    if (levelEl) levelEl.innerText = game.stats.playerLevel || 1;
-    if (xpBarEl) xpBarEl.style.width = (game.stats.getXPProgress ? game.stats.getXPProgress() : 0) + '%';
-  }
-
-  function updateMenuStats() {
-    menuBestScore.innerText = game.stats.bestScore;
-    menuBestWpm.innerText = game.stats.bestWPM;
-
-    // Update Avatar Wand Color
-    const wandGlows = document.querySelectorAll('.mage-wand-glow-img');
-    wandGlows.forEach(glow => {
-      glow.style.backgroundColor = game.stats.wandColor;
-      glow.style.boxShadow = `0 0 15px 5px ${game.stats.wandColor}66`; // 66 is hex for roughly 40% opacity
-    });
-
-    updateProgressionUI();
-  }
-  updateMenuStats();
+  profileUI.updateMenuStats();
 
   // ── Scribe mode selector ───────────────────────────────────────────────────
 

@@ -7,6 +7,9 @@ import { Particle } from './Particle.js';
 import { AudioController } from './AudioController.js';
 import { FloatingText } from './FloatingText.js';
 import { Achievements } from './Achievements.js';
+import { InputHandler } from './game/InputHandler.js';
+import { CombatSystem } from './game/CombatSystem.js';
+import { SigilEventSystem } from './game/SigilEventSystem.js';
 
 export class Game {
     constructor(canvasId) {
@@ -44,7 +47,10 @@ export class Game {
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
 
-        this.handleKeyDown = this.handleKeyDown.bind(this);
+        this.inputHandler = new InputHandler(this);
+        this.combatSystem = new CombatSystem(this);
+        this.sigilSystem = new SigilEventSystem(this);
+
         this.onGameOver = () => { };
     }
 
@@ -108,7 +114,7 @@ export class Game {
         this.reset();
         this.isRunning = true;
         this.audio.startBackgroundMusic();
-        window.addEventListener('keydown', this.handleKeyDown);
+        this.inputHandler.enable();
         this.lastTime = performance.now();
         this.animationFrameId = requestAnimationFrame((t) => this.gameLoop(t));
     }
@@ -116,7 +122,7 @@ export class Game {
     stop() {
         this.isRunning = false;
         this.audio.stopBackgroundMusic();
-        window.removeEventListener('keydown', this.handleKeyDown);
+        this.inputHandler.disable();
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
         }
@@ -218,7 +224,7 @@ export class Game {
 
         // Handle Sigil Event Time
         if (this.sigilActive) {
-            this.updateSigilEvent(dt);
+            this.sigilSystem.updateSigilEvent(dt);
             // Freeze everything else while Sigil QTE is active
             return;
         }
@@ -257,7 +263,7 @@ export class Game {
             }
 
             if (this.boss.shouldCastSpell()) {
-                this.castBossSpell();
+                this.combatSystem.castBossSpell();
             }
 
             // Wait for death animation to fully finish before ending phase
@@ -296,15 +302,15 @@ export class Game {
 
                         // Free Nova Cast
                         this.audio.playExplosion();
-                        this._triggerShake(15, 600);
-                        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#9C27B0', '#ffffff', '#E040FB'] }, 3.0);
+                        this.combatSystem.triggerShake(15, 600);
+                        this.combatSystem.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#9C27B0', '#ffffff', '#E040FB'] }, 3.0);
 
                         for (let j = this.words.length - 1; j >= 0; j--) {
                             const w = this.words[j];
                             if (w.dying || w.isBossAttack) continue;
                             this.stats.addScore(w.text.length, false);
                             w.dying = true;
-                            this.spawnExplosion(w.x, w.y, w.elementColors, 0.5);
+                            this.combatSystem.spawnExplosion(w.x, w.y, w.elementColors, 0.5);
                             if (w === this.targetedWord) this.targetedWord = null;
                         }
 
@@ -318,8 +324,8 @@ export class Game {
                     if (word === this.targetedWord) this.targetedWord = null;
 
                     this.audio.playShatter();
-                    this.spawnExplosion(word.x, word.y, { particles: [hitColor, '#ffffff'] });
-                    this._triggerShake(5, 200);
+                    this.combatSystem.spawnExplosion(word.x, word.y, { particles: [hitColor, '#ffffff'] });
+                    this.combatSystem.triggerShake(5, 200);
 
                     // Drop combo on taking damage
                     this.stats.combo = 0;
@@ -338,7 +344,7 @@ export class Game {
 
                     // Treat missed words as damage as well (optional, but typical for typing defense games)
                     this.audio.playShatter();
-                    this._triggerShake(5, 200);
+                    this.combatSystem.triggerShake(5, 200);
                     this.stats.combo = 0;
                     this.bloodVignetteIntensity = 1.0;
                     this.stats.updateHUD();
@@ -398,16 +404,11 @@ export class Game {
                 if (this.isBossPhase && this.boss && !this.boss.isDead) {
                     this.boss.takeDamage();
                     this.audio.playExplosion();
-                    this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#ffd700', '#ffffff', '#ff4b4b'] });
-                    this._triggerShake(7, 250);
+                    this.combatSystem.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#ffd700', '#ffffff', '#ff4b4b'] });
+                    this.combatSystem.triggerShake(7, 250);
                 }
             }
         }
-    }
-
-    _triggerShake(intensity, duration) {
-        this.shakeIntensity = intensity;
-        this.shakeTimer = duration;
     }
 
     draw() {
@@ -732,15 +733,6 @@ export class Game {
         this.words.push(magicBullet);
     }
 
-    castBossSpell() {
-        // Currently only Blind is implemented. Can add curses here later!
-        this.receiveAttack('blind');
-
-        // Visual indication that Boss casted a spell
-        this.spawnExplosion(this.boss.x, this.boss.y, { particles: ['#8a2be2', '#4b0082', '#000000'] });
-        this.audio.playExplosion();
-    }
-
     endBossPhase() {
         this.stats.addScore(1000);
         this.isBossPhase = false;
@@ -758,429 +750,6 @@ export class Game {
         }
 
         this.spawnTimer = -2000;
-    }
-
-    handleKeyDown(e) {
-        if (!this.isRunning) return;
-
-        // If a Sigil Event is active, hijack all input
-        if (this.sigilActive) {
-            if (e.preventDefault) e.preventDefault();
-            this.handleSigilInput(e);
-            return;
-        }
-
-        // Check for Ultimate Spell (Tab or Enter key)
-        if (e.key === 'Tab' || e.key === 'Enter') {
-            if (e.preventDefault) e.preventDefault(); // Prevent focus switching
-            this.castUltimateSpell();
-            return;
-        }
-
-        if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return;
-
-        // Ignore Spacebar so players don't accidentally break combo after finishing a word
-        if (e.key === ' ') {
-            if (e.preventDefault) e.preventDefault();
-            return;
-        }
-
-        // Extremely important: prevent default to stop Desktop browsers from 
-        // also typing this letter into the hidden `mobileInput`, which would 
-        // cause a synthetic double-fire event!
-        if (e.preventDefault) e.preventDefault();
-
-        const letter = e.key.toLowerCase();
-
-        if (this.targetedWord) {
-            this.processKeystroke(this.targetedWord, letter);
-        } else {
-            let potentialTargets = this.words.filter(w => !w.dying && w.untyped[0] === letter);
-            if (potentialTargets.length > 0) {
-                potentialTargets.sort((a, b) => b.y - a.y);
-                this.targetedWord = potentialTargets[0];
-                this.targetedWord.isTargeted = true;
-                this.processKeystroke(this.targetedWord, letter);
-            } else {
-                this.stats.recordStroke(false);
-                this.audio.playErrorSound();
-                this.stats.updateHUD(); // Ensure combo break is visible
-            }
-        }
-    }
-
-    processKeystroke(word, letter) {
-        if (word.untyped[0] === letter) {
-            word.typed += letter;
-            word.untyped = word.untyped.slice(1);
-            this.stats.recordStroke(true);
-            this.audio.playTypeSound();
-
-            // Spark at typed position
-            this.ctx.font = 'bold 32px Cinzel, serif';
-            const fullWidth = this.ctx.measureText(word.text).width;
-            const typedWidth = this.ctx.measureText(word.typed).width;
-            const textXOffset = -35;
-            const sparkX = word.x + (-fullWidth / 2 + textXOffset + typedWidth) * word.scale;
-            const sparkY = word.y + 70 * word.scale;
-            this.spawnHitSpark(sparkX, sparkY, word.elementColors);
-
-            if (word.untyped.length === 0) {
-                this.achievements.onEvent('word_typed');
-                // Word fully typed — trigger death animation
-                this.stats.addScore(word.text.length, true, word.mistakesMade === 0);
-                word.dying = true; // Let the animation play instead of instant splice
-                this.audio.playExplosion();
-                this.floatingTexts.push(new FloatingText(`+${word.text.length * 10}`, word.x, word.y - 15 * word.scale, "#00e5ff", 28));
-
-                // Check for Arcane Sigil QTE
-                if (word.variant === 'sigil' && word.mistakesMade === 0 && !this.isBossPhase) {
-                    this.startSigilEvent();
-                } else if (word.variant === 'sigil') {
-                    this.floatingTexts.push(new FloatingText(`Sigil Lost... (Mistakes Made)`, word.x, word.y - 30 * word.scale, "#ff4b4b", 20));
-                }
-
-                // Increase explosion size based on combo
-                const comboBonus = Math.min(this.stats.combo, 50) / 50;
-                this.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors, comboBonus);
-                this.playerAnimTimer = 200;
-                this._triggerShake(4 + comboBonus * 4, 150 + comboBonus * 100);
-
-                // Combustion Talent (Explosion AoE)
-                if (this.stats.hasSkill('combustion') && this.stats.combo >= 50) {
-                    const radius = 150;
-                    for (let j = this.words.length - 1; j >= 0; j--) {
-                        const otherW = this.words[j];
-                        if (!otherW.dying && !otherW.isBossAttack && otherW !== word) {
-                            const dist = Math.hypot(otherW.x - word.x, otherW.y - word.y);
-                            if (dist < radius) {
-                                otherW.dying = true;
-                                this.stats.addScore(otherW.text.length, false);
-                                this.spawnExplosion(otherW.x, otherW.y, otherW.elementColors, 0.5);
-                                if (otherW === this.targetedWord) this.targetedWord = null;
-                            }
-                        }
-                    }
-                }
-
-                // Fire counter-attack projectile at boss
-                if (this.isBossPhase && this.boss && !this.boss.isDead && word.isBossAttack) {
-                    const startX = this.canvas.width / 2 + 10;
-                    const startY = this.canvas.height - 45;
-                    const targetXOffset = (Math.random() - 0.5) * 100;
-                    const projectile = new Projectile(startX, startY, this.boss.x + targetXOffset, this.boss.y + 20, word.elementColors.particles);
-                    this.projectiles.push(projectile);
-                }
-
-                // Release targeting immediately so player can type next word
-                this.targetedWord = null;
-            }
-        } else {
-            this.stats.recordStroke(false);
-            this.audio.playErrorSound();
-            if (word) word.mistakesMade++;
-
-            // Armored words reset on typo!
-            if (word.variant === 'armored' && word.typed.length > 0) {
-                word.untyped = word.typed + word.untyped;
-                word.typed = "";
-                word.isTargeted = false;
-                this.targetedWord = null;
-                this.audio.playShatter();
-                this.floatingTexts.push(new FloatingText("Armor Repaired!", word.x, word.y - 30, "#a0a0a0", 20));
-
-                // Visual feedback for armor regenerating
-                this.ctx.font = 'bold 32px Cinzel, serif';
-                const sparkX = word.x - this.ctx.measureText(word.text).width / 2 * word.scale;
-                this.spawnHitSpark(sparkX, word.y, word.elementColors);
-            }
-        }
-
-        this.stats.updateHUD();
-
-        // Update audio intensity based on combo (0.0 to 1.0, maxing at 50 combo)
-        this.audio.setMusicIntensity(this.stats.combo / 50);
-    }
-
-    castUltimateSpell() {
-        if (!this.stats.useMana(100)) return;
-
-        // Mana Overflow Skill: Ultimate restores 1 Barrier
-        if (this.stats.hasSkill('burst')) {
-            const maxAllowedLives = this.stats.hasSkill('life') ? 5 : 4;
-            if (this.stats.lives < maxAllowedLives) {
-                this.stats.lives++;
-                this.stats.updateLivesDisplay();
-            }
-        }
-
-        // Echo Cast Skill: 20% chance to immediately refund 50% max mana
-        if (this.stats.hasSkill('echo') && Math.random() < 0.20) {
-            this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + (this.stats.maxMana * 0.5));
-            this.stats.updateHUD();
-            this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#FF5722', '#FFE0B2', '#E64A19'] }, 1.5);
-        }
-
-        // Chronomancer Discipline Master of Time: Flat refund of 50 mana
-        if (this.stats.mageClass === 'Chronomancer') {
-            this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + 50);
-            this.stats.updateHUD();
-            // Golden chronomancer particles
-            this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#ffd700', '#ffeb3b', '#fff9c4'] }, 1.0);
-        }
-
-        this.audio.playExplosion();
-        // Massive screen shake for Nova
-        this._triggerShake(30, 800);
-
-        // Flash screen intensely
-        this.ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Spawn massive center explosion and Shockwave
-        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 5.0);
-        this.particles.push(new Particle(this.canvas.width / 2, this.canvas.height / 2, 'shockwave'));
-
-        // Destroy all normal words
-        for (let i = this.words.length - 1; i >= 0; i--) {
-            const word = this.words[i];
-
-            // Skip if dying or is a boss attack
-            if (word.dying || word.isBossAttack) continue;
-
-            this.stats.addScore(word.text.length, false);
-            word.dying = true;
-            this.spawnExplosion(word.x, word.y, word.elementColors, 0.5);
-
-            if (word === this.targetedWord) {
-                this.targetedWord = null;
-            }
-        }
-
-        // Damage Boss heavily
-        if (this.isBossPhase && this.boss && !this.boss.isDead) {
-            for (let i = 0; i < 3; i++) {
-                this.boss.takeDamage();
-            }
-        }
-    }
-
-    spawnExplosion(x, y, elementColors, bonusMultiplier = 0) {
-        const colors = elementColors.particles;
-        let numParticles = 35 + Math.random() * 20; // More energetic burst
-        numParticles *= (1 + bonusMultiplier);
-
-        for (let i = 0; i < numParticles; i++) {
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            const particle = new Particle(x, y, color);
-
-            if (bonusMultiplier > 0) {
-                particle.speed *= (1 + bonusMultiplier * 0.5);
-                particle.size *= (1 + bonusMultiplier * 0.5);
-            }
-
-            this.particles.push(particle);
-        }
-    }
-
-    spawnHitSpark(x, y, elementColors) {
-        const colors = elementColors.particles;
-        const numParticles = 4 + Math.random() * 3;
-        for (let i = 0; i < numParticles; i++) {
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            const p = new Particle(x, y, color);
-            p.life = 0.5;
-            p.size = Math.random() * 2 + 1;
-            p.isRune = false;
-            this.particles.push(p);
-        }
-    }
-
-    receiveAttack(type) {
-        if (!this.isRunning) return;
-
-        if (type === 'blind') {
-            const blindDuration = this.stats.hasSkill('vision') ? 2000 : 4000;
-            this.blindTimer = blindDuration;
-            this.floatingTexts.push(new FloatingText("BLINDED!", this.canvas.width / 2, this.canvas.height / 2, "#d500f9", 48));
-        } else if (type === 'swarm') {
-            this.floatingTexts.push(new FloatingText("SWARM INBOUND!", this.canvas.width / 2, this.canvas.height / 2, "#ff4b4b", 48));
-            for (let i = 0; i < 4; i++) {
-                // Use _spawnSingleWord so the boss counter is NOT incremented
-                this._spawnSingleWord();
-            }
-        }
-    }
-
-    // Internal helper: spawn one word without touching the boss spawnCount.
-    // Used for swarm attacks so opponent-triggered swarms don't accidentally
-    // push the counter over the boss threshold.
-    _spawnSingleWord() {
-        if (!this.isRunning) return;
-        const targetX = this.canvas.width / 2;
-        const targetY = this.canvas.height;
-        const margin = 100;
-        let bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
-        for (let tries = 0; tries < 5; tries++) {
-            let tooClose = false;
-            for (const w of this.words) {
-                if (w.y < 150 && Math.abs(w.x - bestX) < 180) { tooClose = true; break; }
-            }
-            if (!tooClose) break;
-            bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
-        }
-        // Use _spawnSingleWord so the boss counter is NOT incremented
-        let wordSpeedMultiplier = this.currentSpeedMultiplier;
-
-        // Cryomancer Discipline: Slower words
-        if (this.stats && this.stats.mageClass === 'Cryomancer') {
-            wordSpeedMultiplier *= 0.85; // 15% slower
-        }
-        const text = this.dictionary.getRandomWord('easy');
-        const newWord = new Word(text, this.canvas.width, this.canvas.height, wordSpeedMultiplier, targetX, targetY, { variant: 'swarm', x: bestX, y: -50 });
-        this.words.push(newWord);
-    }
-
-    // ── Arcane Sigil QTE Methods ────────────────────────────────────────────
-
-    startSigilEvent() {
-        if (this.sigilActive) return; // Prevent overlapping events
-        this.sigilActive = true;
-        this.sigilInputs = [];
-
-        // Generate random sequence of 4 arrows (Up=W, Down=S, Left=A, Right=D)
-        const possibleKeys = ['w', 'a', 's', 'd'];
-        const sequenceLength = 4;
-        this.sigilSequence = [];
-        for (let i = 0; i < sequenceLength; i++) {
-            this.sigilSequence.push(possibleKeys[Math.floor(Math.random() * possibleKeys.length)]);
-        }
-
-        this.sigilTimer = 0;
-        this.sigilMaxTime = 3000; // 3 seconds to complete
-
-        // UI Updates
-        const container = document.getElementById('sigil-event-container');
-        const prompts = document.getElementById('sigil-prompts');
-        if (container && prompts) {
-            container.classList.remove('hidden');
-            this.renderSigilPrompts();
-        }
-
-        this.audio.playLevelUp(); // Temporary sound queue
-        this.floatingTexts.push(new FloatingText("SIGIL ACTIVATED!", this.canvas.width / 2, this.canvas.height / 2 - 100, "#00e5ff", 36));
-
-        // Darken the background to focus on UI
-        this.blindTimer = this.sigilMaxTime;
-    }
-
-    renderSigilPrompts() {
-        const prompts = document.getElementById('sigil-prompts');
-        if (!prompts) return;
-        prompts.innerHTML = '';
-
-        const arrowMap = { 'w': '↑', 'a': '←', 's': '↓', 'd': '→' };
-
-        this.sigilSequence.forEach((key, index) => {
-            const span = document.createElement('span');
-            span.innerText = arrowMap[key];
-            if (index < this.sigilInputs.length) {
-                // Already successfully pressed
-                span.style.color = '#00e5ff';
-                span.style.textShadow = '0 0 10px #00e5ff';
-                span.style.transform = 'scale(1.2)';
-            } else if (index === this.sigilInputs.length) {
-                // Next required key
-                span.style.color = '#ffffff';
-                span.style.animation = 'pulse 1s infinite';
-            } else {
-                // Pending key
-                span.style.color = 'rgba(255, 255, 255, 0.3)';
-            }
-            prompts.appendChild(span);
-        });
-    }
-
-    updateSigilEvent(dt) {
-        this.sigilTimer += dt;
-
-        // Update timer bar UI
-        const bar = document.getElementById('sigil-timer-bar');
-        if (bar) {
-            const pct = Math.max(0, 100 - (this.sigilTimer / this.sigilMaxTime) * 100);
-            bar.style.width = pct + '%';
-        }
-
-        if (this.sigilTimer >= this.sigilMaxTime) {
-            this.failSigilEvent("Time Expired!");
-        }
-    }
-
-    handleSigilInput(e) {
-        let key = e.key.toLowerCase();
-        // Map arrow keys to WASD for flexibility
-        if (key === 'arrowup') key = 'w';
-        if (key === 'arrowdown') key = 's';
-        if (key === 'arrowleft') key = 'a';
-        if (key === 'arrowright') key = 'd';
-
-        const expectedKey = this.sigilSequence[this.sigilInputs.length];
-
-        if (key === expectedKey) {
-            this.sigilInputs.push(key);
-            this.audio.playTypeSound();
-            this.renderSigilPrompts();
-
-            if (this.sigilInputs.length === this.sigilSequence.length) {
-                this.succeedSigilEvent();
-            }
-        } else {
-            this.audio.playErrorSound();
-            this.failSigilEvent("Wrong Input!");
-        }
-    }
-
-    failSigilEvent(reason) {
-        this.sigilActive = false;
-        this.blindTimer = 0; // Remove dark background overlay
-
-        const container = document.getElementById('sigil-event-container');
-        if (container) container.classList.add('hidden');
-
-        this.floatingTexts.push(new FloatingText(`Sigil Failed: ${reason}`, this.canvas.width / 2, this.canvas.height / 2, "#ff4b4b", 36));
-        this.audio.playShatter();
-        this._triggerShake(10, 300);
-    }
-
-    succeedSigilEvent() {
-        this.sigilActive = false;
-        this.blindTimer = 0;
-
-        const container = document.getElementById('sigil-event-container');
-        if (container) container.classList.add('hidden');
-
-        this.floatingTexts.push(new FloatingText("SIGIL UNLEASHED!", this.canvas.width / 2, this.canvas.height / 2, "#ffd700", 48));
-        this.stats.addScore(500); // Massive point bonus
-        this.stats.mana = Math.min(this.stats.maxMana, this.stats.mana + 100); // Full mana restore
-        this.stats.updateHUD();
-
-        // Screen clear effect similar to Ultimate but free
-        this.audio.playExplosion();
-        this._triggerShake(40, 1000);
-        this.spawnExplosion(this.canvas.width / 2, this.canvas.height / 2, { particles: ['#00e5ff', '#ffd700', '#ffffff'] }, 5.0);
-
-        for (let i = this.words.length - 1; i >= 0; i--) {
-            const word = this.words[i];
-            if (word.dying || word.isBossAttack) continue;
-            this.stats.addScore(word.text.length, false);
-            word.dying = true;
-            this.spawnExplosion(word.x, word.y, word.elementColors, 1.0);
-            if (word === this.targetedWord) this.targetedWord = null;
-        }
-
-        if (this.isBossPhase && this.boss && !this.boss.isDead) {
-            for (let i = 0; i < 5; i++) this.boss.takeDamage();
-        }
     }
 
     triggerGameOver() {
