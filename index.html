@@ -14,6 +14,10 @@
 
 <body>
   <div id="app">
+    <!-- Hidden input to trap mobile keyboard events -->
+    <input type="text" id="mobile-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="opacity: 0; position: absolute; top: -1000px; left: -1000px; width: 1px; height: 1px; pointer-events: none;" />
+
     <div id="game-container">
       <!-- HUD Overlay -->
       <div id="hud" class="hidden">

@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     game.start(difficultySelect.value, selectedMode, selectedDictionary);
 
     // Focus invisible input to trigger mobile keyboard
-    mobileInput.value = '';
+    mobileInput.value = ' '; // Space for backspace catching
     mobileInput.focus();
   }
 
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Focus invisible input to trigger mobile keyboard, 
     // but skip it if we're just refreshing settings via dropdown
     if (!skipFocus && typeof skipFocus !== 'object') {
-      mobileInput.value = '';
+      mobileInput.value = ' '; // Space for backspace catching
       mobileInput.focus();
     }
   }
@@ -1082,13 +1082,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Intercept virtual keyboard input (since 'keydown' is unreliable on Android/iOS)
   mobileInput.addEventListener('input', (e) => {
     if (!game.isRunning && !scribe.isRunning) return;
 
-    // e.data contains the character that was just typed
-    const char = e.data;
-    if (char && char.length === 1) {
+    let char = null;
+
+    // Check if backspace was pressed on mobile software keyboard
+    if (e.inputType === 'deleteContentBackward') {
+      char = 'Backspace';
+    } else if (e.data && e.data.length === 1) {
+      char = e.data.toLowerCase();
+    } else if (mobileInput.value && mobileInput.value.length > 0) {
+      // Fallback if e.data is missing but the value grew
+      char = mobileInput.value.slice(-1).toLowerCase();
+    }
+
+    if (char) {
       const syntheticEvent = {
         key: char,
         ctrlKey: false,
@@ -1104,8 +1113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Clear the input immediately so it's ready for the next letter
-    mobileInput.value = '';
+    // Always keep a space in the input so soft keyboards will emit 'deleteContentBackward' when Backspace is hit
+    mobileInput.value = ' ';
   });
 
   // Mobile Ultimate Button
