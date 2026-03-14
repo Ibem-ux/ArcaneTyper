@@ -7,6 +7,7 @@ import { MagicalToast } from './ui/MagicalToast.js';
 import { ProfileUI } from './ui/ProfileUI.js';
 import { AuthUI } from './ui/AuthUI.js';
 import { MenuUI } from './ui/MenuUI.js';
+import { supabase } from './supabaseClient.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Ultra-strict font preloader for Canvas
@@ -127,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let duelTimerInterval = null;
   let duelSecondsLeft = 90;
   let duelActive = false;
+  let duelOpponentLastState = null;
 
   // Global State
   let isGuest = false;
@@ -233,15 +235,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   scribeModeSelect.addEventListener('change', () => {
     applyModeUI();
-    // Restart if practice is already active
-    if (scribe.isRunning) startPractice();
+    // Restart if practice is already active (skipFocus = true to avoid dropdown losing focus)
+    if (scribe.isRunning) startPractice(true);
   });
 
   scribeDurationSelect.addEventListener('change', () => {
     const timerDisplay = document.getElementById('scribe-timer-display');
     if (timerDisplay) timerDisplay.textContent = scribeDurationSelect.value;
-    // Restart if practice is already active
-    if (scribe.isRunning) startPractice();
+    // Restart if practice is already active (skipFocus = true)
+    if (scribe.isRunning) startPractice(true);
   });
 
   // ── Game Flow ─────────────────────────────────────────────────────────────
@@ -331,7 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     gameOverMenu.classList.remove('hidden');
     gameOverMenu.classList.add('active');
-    updateMenuStats();
+    profileUI.updateMenuStats();
 
     const qualifies = await leaderboard.isTop10(
       game.difficulty,
@@ -357,13 +359,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (lastCompleted !== todayStr) {
         localStorage.setItem('typerMaster_dailyCompleted', todayStr);
         game.stats.addXP(500); // Generous daily reward!
-        if (typeof showMagicalToast === 'function') {
-          showMagicalToast("🌟 Daily Challenge Complete! +500 XP Awarded 🌟", 5000);
-        }
+        MagicalToast.show("🌟 Daily Challenge Complete! +500 XP Awarded 🌟", 5000);
       } else {
-        if (typeof showMagicalToast === 'function') {
-          showMagicalToast("Daily Challenge Replayed. (Rewards already claimed today)", 3000);
-        }
+        MagicalToast.show("Daily Challenge Replayed. (Rewards already claimed today)", 3000);
       }
     }
 
@@ -561,199 +559,63 @@ document.addEventListener('DOMContentLoaded', async () => {
   practiceReturnBtn.addEventListener('click', quitPractice);
   practiceRetryBtn.addEventListener('click', () => startPractice());
 
-  scribeModeSelect.addEventListener('change', () => {
-    // Dynamically toggle the UI elements without completely restarting until they start typing
-    const isTimed = scribeModeSelect.value === 'timed';
-    scribeTimerContainer.classList.toggle('hidden', !isTimed);
-    scribeDurationSelect.classList.toggle('hidden', !isTimed);
-
-    // Only restart the trial if we're actively viewing the menu
-    if (practiceUi.classList.contains('active')) {
-      startPractice(true);
-    }
+  openLeaderboardBtn.addEventListener('click', () => {
+    openLeaderboard('score');
   });
 
-  scribeDurationSelect.addEventListener('change', () => {
-    if (practiceUi.classList.contains('active')) {
-      startPractice(true);
-    }
+  closeLeaderboardBtn.addEventListener('click', () => {
+    leaderboardMenu.classList.remove('active');
+    leaderboardMenu.classList.add('hidden');
+    startMenu.classList.remove('hidden');
+    startMenu.classList.add('active');
   });
 
-  // ── Mage Class Selection ──────────────────────────────────────────────────
+  const mageAvatarBg = document.getElementById('background-mage');
+  if (mageAvatarBg) {
+    mageAvatarBg.addEventListener('click', () => {
+      // Populate profile display using local variables already in scope
+      if (authUI.profileUsernameUI) {
+        authUI.profileUsernameUI.innerText = isGuest ? 'Wandering Guest' : (authUI.profileUsernameUI.innerText || 'Unknown Mage');
+      }
+      if (authUI.profileNickname) {
+        authUI.profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
+      }
 
-  if (mageClassSelect && game.stats.mageClass) {
-    mageClassSelect.value = game.stats.mageClass;
+      startMenu.style.pointerEvents = 'none';
+      startMenu.style.opacity = '0.5';
+      startMenu.style.filter = 'blur(4px)';
+
+      authUI.profileMenu.classList.remove('hidden');
+      setTimeout(() => authUI.profileMenu.classList.add('active'), 10);
+    });
   }
 
-  mageClassSelect.addEventListener('change', (e) => {
-    game.stats.setMageClass(e.target.value);
-  });
+  const closeProfileBtn = document.getElementById('close-profile-btn');
+  if (closeProfileBtn) {
+    closeProfileBtn.addEventListener('click', () => {
+      authUI.profileMenu.classList.remove('active');
+      authUI.profileMenu.classList.add('hidden');
+
+      startMenu.style.pointerEvents = 'auto';
+      startMenu.style.opacity = '';
+      startMenu.style.filter = '';
+    });
+  }
+
 
   forfeitBtn.addEventListener('click', () => {
     // Instantly drain lives and trigger game over logic
     game.stats.lives = 0;
     game.triggerGameOver();
   });
-  openLeaderboardBtn.addEventListener('click', () => openLeaderboard('score'));
-  closeLeaderboardBtn.addEventListener('click', () => {
-    leaderboardMenu.classList.remove('active');
-    leaderboardMenu.classList.add('hidden');
-    startMenu.classList.remove('hidden');
-    startMenu.classList.add('active');
 
-    startMenu.style.pointerEvents = 'auto';
-    startMenu.style.opacity = '';
-    startMenu.style.filter = '';
-  });
 
-  // Profile Listeners
-  const backgroundMage = document.getElementById('background-mage');
-
-  let profileChartInstance = null;
-  function renderProfileChart(runs) {
-    const ctx = document.getElementById('profile-history-chart').getContext('2d');
-    if (profileChartInstance) {
-      profileChartInstance.destroy();
-    }
-
-    const labels = runs.map((run, index) => `#${index + 1}`);
-    const dataStr = runs.map(run => run.wpm);
-
-    profileChartInstance = new window.Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'WPM',
-          data: dataStr,
-          borderColor: '#29b6f6',
-          backgroundColor: 'rgba(41, 182, 246, 0.2)',
-          tension: 0.3,
-          fill: true,
-          pointBackgroundColor: '#ffd700'
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-          x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
-        }
-      }
-    });
-  }
-
-  const openProfileHandler = async () => {
-    startMenu.classList.remove('active');
-    startMenu.classList.add('hidden');
-
-    // Populate stats
-    profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
-
-    // Try to get username and class from Supabase session
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // First try to use the stored true_name metadata
-        if (session.user.user_metadata && session.user.user_metadata.true_name) {
-          profileUsernameUI.innerText = session.user.user_metadata.true_name;
-        } else if (session.user.email) {
-          // Fallback to legacy email parsing if true_name metadata is missing
-          profileUsernameUI.innerText = session.user.email.split('@')[0];
-        }
-
-        if (session.user.user_metadata && session.user.user_metadata.discipline) {
-          mageClassSelect.value = session.user.user_metadata.discipline;
-        } else {
-          mageClassSelect.value = 'Novice'; // Default
-        }
-
-        // Fetch Run History for Graph
-        const { data: runs } = await supabase
-          .from('run_history')
-          .select('wpm, created_at')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (runs && runs.length > 0) {
-          renderProfileChart(runs.reverse());
-        }
-      }
-    } else {
-      profileUsernameUI.innerText = 'Local Profile';
-      profileClassUI.innerText = 'The Scholar (Balanced)';
-    }
-
-    profileMenu.classList.remove('hidden');
-    profileMenu.classList.add('active');
-  };
-
-  if (backgroundMage) {
-    backgroundMage.addEventListener('click', openProfileHandler);
-  }
-
-  closeProfileBtn.addEventListener('click', () => {
-    profileMenu.classList.remove('active');
-    profileMenu.classList.add('hidden');
-    startMenu.classList.remove('hidden');
-    startMenu.classList.add('active');
-
-    // Safety check: ensure main menu isn't blurred or locked
-    startMenu.style.pointerEvents = 'auto';
-    startMenu.style.opacity = '';
-    startMenu.style.filter = '';
-  });
-
-  logoutBtn.addEventListener('click', async () => {
-    if (supabase && !isGuest) {
-      await supabase.auth.signOut();
-    }
-    // Clear local profile reference so they are prompted to login again
-    game.stats.mageName = "";
-    localStorage.removeItem('typerMaster_mageName'); // Explicitly wipe — saveProgression only writes if truthy
-    game.stats.saveProgression();
-
-    // Reset guest status
-    isGuest = false;
-
-    profileMenu.classList.remove('active');
-    profileMenu.classList.add('hidden');
-
-    // reset to login mode visually
-    isLoginMode = true;
-    ccTitle.innerText = "MAGE RECOGNITION";
-    ccSubtitle.innerText = "Speak your Owl Delivery and Incantation.";
-    ccClassContainer.style.display = 'none';
-    ccNicknameContainer.style.display = 'none';
-    if (ccEmailContainer) ccEmailContainer.style.display = 'none';
-    if (ccUsernameLabel) ccUsernameLabel.innerText = "Owl Delivery (Email Address):";
-    ccUsername.placeholder = "e.g. mage@library.com";
-    ccCreateBtn.innerText = "ENTER LIBRARY";
-    ccToggleMode.innerText = "I need to register a new Mage Card.";
-    ccUsername.value = '';
-    ccName.value = '';
-    if (ccEmail) ccEmail.value = '';
-
-    if (ccPassword) {
-      ccPassword.value = '';
-      ccPassword.type = 'password';
-    }
-    if (togglePasswordBtn) {
-      togglePasswordBtn.classList.remove('revealed');
-      togglePasswordBtn.title = "Dispel Illusion (Reveal Password)";
-    }
-    if (ccErrorMsg) ccErrorMsg.innerText = '';
-
-    showCharacterCreation();
-  });
 
 
   // Workshop Listeners
   workshopBtn.addEventListener('click', () => {
     if (isGuest) {
-      showMagicalToast("The Workshop requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to unlock upgrades.</span>");
+      MagicalToast.show("The Workshop requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to unlock upgrades.</span>");
       return;
     }
     startMenu.classList.remove('active');
@@ -796,15 +658,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (duelMageSilhouette) {
     duelMageSilhouette.addEventListener('click', () => {
       if (isGuest) {
-        showMagicalToast("The Arena requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to duel other mages.</span>");
+        MagicalToast.show("The Arena requires a sealed Mage Card!<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please log in or register to duel other mages.</span>");
         return;
       }
       if (!supabase) {
-        showMagicalToast("The Arena requires a Supabase connection.<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please configure your environment variables.</span>");
+        MagicalToast.show("The Arena requires a Supabase connection.<br><span style='font-size: 0.8em; color: var(--text-muted);'>Please configure your environment variables.</span>");
         return;
       }
-      startMenu.classList.remove('active');
-      startMenu.classList.add('hidden');
       duelLobbyMenu.classList.remove('hidden');
       openDuelLobby();
     });
@@ -983,14 +843,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     duelResultMenu.classList.add('active');
   }
 
-  // Duel button on Start Menu
-  document.getElementById('duel-mage').addEventListener('click', () => {
-    if (!supabase) {
-      alert('Mage Duels require a Supabase connection. Please configure your environment variables.');
-      return;
-    }
-    openDuelLobby();
-  });
+  // Duel button on Start Menu (duplicate listener block — removed, handled by duelMageSilhouette above)
 
   // Close lobby
   document.getElementById('duel-lobby-close-btn').addEventListener('click', closeDuelLobby);
@@ -1110,7 +963,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     startMenu.style.opacity = '1';
     startMenu.style.filter = 'none';
 
-    updateMenuStats();
+    profileUI.updateMenuStats();
   });
 
   function updateWorkshopUI() {
@@ -1179,9 +1032,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.addEventListener('keydown', (e) => {
     // Dismiss any active magical toasts instantly
-    if (e.key === 'Escape' && toastContainer && toastContainer.children.length > 0) {
-      toastContainer.innerHTML = '';
-      return;
+    if (e.key === 'Escape') {
+      const toastContainer = MagicalToast.toastContainer;
+      if (toastContainer && toastContainer.children.length > 0) {
+        MagicalToast.clearAll();
+        return;
+      }
     }
 
     // If the Duel Lobby is active, Escape closes it and unblurs the dashboard

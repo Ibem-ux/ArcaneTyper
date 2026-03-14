@@ -196,6 +196,25 @@ export class Scribe {
             if (key === expected) {
                 this.correctKeystrokes++;
                 letterEl.className = 'letter correct';
+
+                // Typing Spark
+                const spark = document.createElement('span');
+                spark.className = 'typing-spark';
+
+                // Randomize spark direction slightly
+                const angle = Math.random() * Math.PI;
+                const distance = 15 + Math.random() * 15;
+                const dx = Math.cos(angle) * distance;
+                const dy = -Math.sin(angle) * distance - 10;
+
+                spark.style.setProperty('--dx', `${dx}px`);
+                spark.style.setProperty('--dy', `${dy}px`);
+                spark.style.left = '50%';
+                spark.style.top = '50%';
+
+                letterEl.appendChild(spark);
+                setTimeout(() => spark.remove(), 400);
+
             } else {
                 letterEl.className = 'letter incorrect';
             }

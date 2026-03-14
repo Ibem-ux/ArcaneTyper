@@ -101,6 +101,21 @@ export class InputHandler {
                 this.game.playerAnimTimer = 200;
                 this.game.combatSystem.triggerShake(4 + comboBonus * 4, 150 + comboBonus * 100);
 
+                // Combo Milestones
+                const combo = this.game.stats.combo;
+                if (combo > 0 && combo % 10 === 0) {
+                    const milestoneText = document.createElement('div');
+                    milestoneText.className = 'combo-milestone-text';
+                    milestoneText.textContent = `${combo}x COMBO!`;
+                    document.body.appendChild(milestoneText);
+
+                    // Extra large screen shake
+                    this.game.combatSystem.triggerShake(10, 400);
+
+                    // Remove after animation completes
+                    setTimeout(() => milestoneText.remove(), 1500);
+                }
+
                 // Combustion Talent (Explosion AoE)
                 if (this.game.stats.hasSkill('combustion') && this.game.stats.combo >= 50) {
                     const radius = 150;

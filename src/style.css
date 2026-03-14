@@ -276,17 +276,20 @@ body.duel-dimension #app::before {
   backdrop-filter: blur(10px);
   z-index: 20;
   opacity: 0;
+  transform: translateY(20px);
   pointer-events: none;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1);
 }
 
 .overlay-menu.hidden {
   opacity: 0;
+  transform: translateY(20px);
   pointer-events: none;
 }
 
 .overlay-menu.active {
   opacity: 1;
+  transform: translateY(0);
   pointer-events: all;
 }
 
@@ -752,10 +755,31 @@ h1 .highlight {
   z-index: 10;
 }
 
+.primary-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
+  transform: skewX(-20deg);
+  transition: none;
+}
+
 .primary-btn:hover {
   background: var(--accent-primary);
   color: var(--bg-deep);
   box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.primary-btn:hover::after {
+  left: 200%;
+  transition: left 0.7s ease-in-out;
+}
+
+.primary-btn:active {
+  transform: scale(0.95);
 }
 
 /* Avatar Profile Background Silhouette */
@@ -768,11 +792,8 @@ h1 .highlight {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  z-index: 1;
-  /* Keep it behind text but clickable */
+  z-index: 30;
   pointer-events: none;
-  /* Allow clicking the background image */
-  cursor: pointer;
   transition: all 0.5s ease;
 }
 
@@ -787,18 +808,15 @@ h1 .highlight {
 .mage-silhouette-img {
   position: absolute;
   bottom: -2px;
-  /* Pull down slightly to hide the sharp bottom cut */
   left: 0px;
-  /* Flush to the left */
-  /* Align to the left */
   height: 65vh;
-  /* Scale well on various screens */
   max-height: 800px;
   width: max-content;
   opacity: 0.8;
   transition: opacity 0.5s ease, transform 0.5s ease;
   transform-origin: bottom left;
   pointer-events: auto;
+  cursor: pointer;
 }
 
 .mage-silhouette-img img {
@@ -842,9 +860,8 @@ h1 .highlight {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  z-index: 1;
+  z-index: 30;
   pointer-events: none;
-  cursor: pointer;
   transition: all 0.5s ease;
 }
 
@@ -859,19 +876,16 @@ h1 .highlight {
 .duel-silhouette-img {
   position: absolute;
   top: 50%;
-  /* Center vertically */
   right: 5vw;
-  /* Push slightly in from the right edge */
   height: 55vh;
-  /* Scale down to look like it's in the background */
   max-height: 600px;
   width: max-content;
   opacity: 0.8;
   transition: opacity 0.5s ease, transform 0.5s ease;
   transform-origin: center right;
   transform: translateY(-50%);
-  /* Adjust for top: 50% perfect centering */
   pointer-events: auto;
+  cursor: pointer;
 }
 
 .duel-silhouette-img img {
@@ -1428,5 +1442,120 @@ h2 {
   to {
     opacity: 0;
     transform: translateY(-10px);
+  }
+}
+
+/* ── UI Enhancements & Animations ── */
+
+/* Typing Spark Effect */
+.typing-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 2px var(--accent-primary);
+  pointer-events: none;
+  z-index: 100;
+  animation: sparkFade 0.4s ease-out forwards;
+}
+
+@keyframes sparkFade {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2) translate(var(--dx, 0px), var(--dy, -20px));
+  }
+}
+
+/* Screen Shake (High Combos) */
+.screen-shake {
+  animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+@keyframes shake {
+
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+/* Flowing XP Bar */
+.flowing-mana-bar {
+  background: repeating-linear-gradient(45deg,
+      #d500f9,
+      #d500f9 10px,
+      #29b6f6 10px,
+      #29b6f6 20px) !important;
+  background-size: 28px 28px !important;
+  animation: barberpole 1.5s linear infinite;
+}
+
+@keyframes barberpole {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 28px 0;
+  }
+}
+
+/* Floating Combo Milestone Text */
+.combo-milestone-text {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ff9800;
+  font-size: 3rem;
+  font-weight: 900;
+  font-family: var(--font-family);
+  text-shadow: 0 0 30px rgba(255, 152, 0, 0.8), 2px 2px 0 #fff;
+  z-index: 1000;
+  pointer-events: none;
+  animation: floatMilestone 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes floatMilestone {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20%) scale(0.5) rotate(-5deg);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2) rotate(5deg);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1) rotate(0deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -80%) scale(0.8);
   }
 }

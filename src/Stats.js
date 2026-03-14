@@ -345,12 +345,40 @@ export class Stats {
                         id: session.user.id,
                         total_xp: this.totalXP,
                         player_level: this.playerLevel,
-                        username: this.mageName || session.user.email.split('@')[0]
+                        username: this.mageName || session.user.email.split('@')[0],
+                        unlocked_skills: this.unlockedSkills,
+                        wand_color: this.wandColor,
+                        mage_class: this.mageClass,
+                        best_score: this.bestScore,
+                        best_wpm: this.bestWPM
                     }], { onConflict: 'id' }).then(({ error }) => {
                         if (error) console.warn("[Stats] Supabase profiles sync error:", error);
                     });
                 }
             });
         }
+    }
+
+    loadFromSupabase(profile) {
+        if (!profile) return;
+
+        console.log("[Stats] Loading profile data from Supabase:", profile);
+        this.totalXP = profile.total_xp || 0;
+        this.playerLevel = profile.player_level || Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
+
+        if (profile.username) this.mageName = profile.username;
+        if (profile.unlocked_skills) this.unlockedSkills = profile.unlocked_skills;
+        if (profile.wand_color) this.wandColor = profile.wand_color;
+        if (profile.mage_class) this.mageClass = profile.mage_class;
+        if (profile.best_score && profile.best_score > this.bestScore) this.bestScore = profile.best_score;
+        if (profile.best_wpm && profile.best_wpm > this.bestWPM) this.bestWPM = profile.best_wpm;
+
+        // Save these backend values down to localStorage so guest sessions don't revert
+        this.saveProgression();
+
+        // Calculate dynamic properties
+        this.lives = this.hasSkill('life') ? 5 : 4;
+        this.maxMana = this.hasSkill('mana') ? 120 : 100;
+        this.combo = this.hasSkill('combo') ? 10 : 0;
     }
 }

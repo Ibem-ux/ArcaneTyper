@@ -218,6 +218,12 @@ export class AuthUI {
                     this.game.stats.mageName = data.user.user_metadata.mage_title;
                 }
 
+                // Fetch full profile and load it into Stats immediately after logging in
+                const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                if (profile) {
+                    this.game.stats.loadFromSupabase(profile);
+                }
+
             } else {
                 const { data, error } = await supabase.auth.signUp({
                     email: emailToUse,
@@ -282,32 +288,6 @@ export class AuthUI {
             if (!this.game.stats.mageName) {
                 this.showCharacterCreation();
             } else {
-                const mageAvatarBg = document.getElementById('background-mage');
-                if (mageAvatarBg) {
-                    mageAvatarBg.addEventListener('click', async () => {
-                        if (!this.isGuest) {
-                            try {
-                                if (supabase) {
-                                    const { data: { session } } = await supabase.auth.getSession();
-                                    if (session) {
-                                        this.profileUsernameUI.innerText = session.user.email;
-                                        this.mageClassSelect.value = session.user.user_metadata?.discipline || 'Novice';
-                                    }
-                                }
-                            } catch (e) { console.warn("Supabase auth check failed."); }
-                        } else {
-                            this.profileUsernameUI.innerText = "Wandering Guest";
-                            this.mageClassSelect.value = "Novice";
-                        }
-
-                        this.profileNickname.innerText = this.game.stats.mageName || "Unknown Mage";
-
-                        this.startMenu.classList.remove('active');
-                        this.startMenu.classList.add('hidden');
-                        this.profileMenu.classList.remove('hidden');
-                        this.profileMenu.classList.add('active');
-                    });
-                }
                 this.startMenu.classList.remove('hidden');
                 this.startMenu.classList.add('active');
             }
@@ -325,11 +305,9 @@ export class AuthUI {
                 this.game.stats.saveProgression();
             }
 
-            const { data: profile } = await supabase.from('profiles').select('total_xp').eq('id', session.user.id).single();
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
             if (profile) {
-                this.game.stats.totalXP = profile.total_xp || 0;
-                this.game.stats.playerLevel = Math.floor(Math.sqrt(this.game.stats.totalXP / 500)) + 1;
-                this.game.stats.saveProgression();
+                this.game.stats.loadFromSupabase(profile);
             }
 
             if (this.updateProgressionUICallback) {

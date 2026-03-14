@@ -11,6 +11,17 @@ export class MenuUI {
 
         this.patchNotes = [
             {
+                version: "v2.2.5",
+                date: "March 14, 2026",
+                desc: "UI Bug Fixes & Overlay Refinements",
+                changes: [
+                    "Fixed a critical bug causing the dashboard to silently fail to load (blank screen).",
+                    "Resolved overlapping invisible hitboxes for the Mage Profile and Duel Arena silhouettes.",
+                    "Fixed the Arena and Mage Profile overlays to properly blur the dashboard instead of hiding it.",
+                    "Restored Magical Toast notifications which were previously malfunctioning."
+                ]
+            },
+            {
                 version: "v2.2.4",
                 date: "March 7, 2026",
                 desc: "Dashboard UI Polish & Layout Simplification",
