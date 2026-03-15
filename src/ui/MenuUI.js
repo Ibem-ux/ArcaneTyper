@@ -11,6 +11,21 @@ export class MenuUI {
 
         this.patchNotes = [
             {
+                version: "v2.2.6",
+                date: "March 15, 2026",
+                desc: "Mobile Responsiveness Overhaul",
+                changes: [
+                    "CRITICAL FIX: Mobile typing was completely broken — keystrokes on touch keyboards were silently ignored. Now fully fixed.",
+                    "Fixed: Start Menu now scrolls correctly on small phones instead of cutting off the top content.",
+                    "Fixed: Spellbook dropdown no longer overlaps the ArcaneTyper title on narrow screens.",
+                    "Fixed: Scribe's Trial results screen no longer overflows the screen edge on phones (iPhone SE, etc.).",
+                    "Fixed: Scribe mode header now stacks vertically on narrow screens instead of collapsing.",
+                    "Fixed: Game HUD stat-boxes now wrap into two rows on narrow phones for better readability.",
+                    "Fixed: Mobile Nova button now respects iPhone notch/home-bar safe-area and only appears during gameplay.",
+                    "Improved: App now uses dynamic viewport height (dvh) to fix browser navigation bar overlap on iOS/Android."
+                ]
+            },
+            {
                 version: "v2.2.5",
                 date: "March 14, 2026",
                 desc: "UI Bug Fixes & Overlay Refinements",

@@ -268,6 +268,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     game.start(difficultySelect.value, selectedMode, selectedDictionary);
 
+    // Show Mobile Nova Button
+    if (mobileNovaBtn) mobileNovaBtn.classList.remove('mobile-hidden');
+
     // Focus invisible input to trigger mobile keyboard
     mobileInput.value = ' '; // Space for backspace catching
     mobileInput.focus();
@@ -325,6 +328,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   game.onGameOver = async (finalStats) => {
     hud.classList.add('hidden');
+    // Hide Mobile Nova Button when game ends
+    if (mobileNovaBtn) mobileNovaBtn.classList.add('mobile-hidden');
 
     goScore.innerText = finalStats.score;
     goWords.innerText = finalStats.wordsTyped;
@@ -1107,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
 
       if (game.isRunning) {
-        game.handleKeyDown(syntheticEvent);
+        game.inputHandler.handleKeyDown(syntheticEvent);
       } else if (scribe.isRunning) {
         scribe.handleKeyDown(syntheticEvent);
       }
