@@ -215,7 +215,7 @@ export class Stats {
         const hearts = this.livesContainer.querySelectorAll('.barrier');
 
         hearts.forEach((heart, index) => {
-            if (index >= this.lives - 1) {
+            if (index >= this.lives) {
                 heart.classList.add('lost');
             } else {
                 heart.classList.remove('lost');

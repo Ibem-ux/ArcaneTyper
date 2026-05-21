@@ -34,6 +34,10 @@
           <span class="label">SCORE</span>
           <span id="score-display" class="value">0</span>
         </div>
+        <div class="stat-box" title="Progressive difficulty wave. Higher waves speed up incantations!">
+          <span class="label">WAVE</span>
+          <span id="wave-display" class="value" style="color: #ffd700;">1</span>
+        </div>
         <div class="stat-box">
           <span class="label">COMBO</span>
           <div style="display: flex; align-items: baseline; gap: 5px;">
@@ -142,6 +146,7 @@
               WORKSHOP (UPGRADES)</button>
             <button id="open-leaderboard-btn" class="primary-btn">HALL OF
               FAME</button>
+            <div style="font-size: 0.75rem; color: #b892b0; opacity: 0.8; text-align: center; pointer-events: none; margin-top: 5px; font-family: 'Outfit', monospace; letter-spacing: 0.5px;">Press <span style="color: #ffd700; font-weight: bold; border: 1px solid rgba(255, 215, 0, 0.4); padding: 1px 5px; border-radius: 3px; background: rgba(0,0,0,0.3); box-shadow: 0 0 5px rgba(255, 215, 0, 0.2);">Enter</span> to begin instantly</div>
           </div>
         </div>
 
@@ -228,6 +233,16 @@
         <button id="close-patch-board-btn" class="primary-btn"
           style="margin-top: 2rem; position: relative; z-index: 100; pointer-events: auto; flex-shrink: 0; align-self: center;">RETURN
           TO LIBRARY</button>
+      </div>
+
+      <!-- Pause Menu -->
+      <div id="pause-menu" class="overlay-menu hidden">
+        <h2 style="text-shadow: 0 0 20px rgba(184,146,176,0.6); color: #ffd700;">TIME FROZEN</h2>
+        <p style="color: #b892b0; font-size: 1.1rem; margin-bottom: 2rem; font-family: 'Cinzel', serif;">The magic is suspended...</p>
+        <button id="resume-btn" class="primary-btn">RESUME SPELLCASTING</button>
+        <button id="pause-return-btn" class="primary-btn"
+          style="margin-top: 10px; background: transparent; border-color: var(--text-muted); color: var(--text-muted);">FORFEIT RUN</button>
+        <div style="font-size: 0.75rem; color: #b892b0; opacity: 0.8; text-align: center; pointer-events: none; margin-top: 20px; font-family: monospace;">Press <span style="color: #ffd700; font-weight: bold; border: 1px solid rgba(255, 215, 0, 0.4); padding: 1px 5px; border-radius: 3px; background: rgba(0,0,0,0.3); box-shadow: 0 0 5px rgba(255, 215, 0, 0.2);">Escape</span> to resume instantly</div>
       </div>
 
       <!-- Game Over Menu -->

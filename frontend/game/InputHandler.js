@@ -8,6 +8,7 @@ export class InputHandler {
     }
 
     enable() {
+        this.disable();
         document.addEventListener('keydown', this._keydownHandler);
     }
 
@@ -17,13 +18,6 @@ export class InputHandler {
 
     handleKeyDown(e) {
         if (!this.game.isRunning) return;
-
-        // If a Sigil Event is active, hijack all input
-        if (this.game.sigilActive) {
-            if (e.preventDefault) e.preventDefault();
-            this.game.sigilSystem.handleSigilInput(e);
-            return;
-        }
 
         // Check for Ultimate Spell (Tab or Enter key)
         if (e.key === 'Tab' || e.key === 'Enter') {
@@ -82,18 +76,12 @@ export class InputHandler {
 
             if (word.untyped.length === 0) {
                 this.game.achievements.onEvent('word_typed');
+                this.game.waveWordsTyped++;
                 // Word fully typed — trigger death animation
                 this.game.stats.addScore(word.text.length, true, word.mistakesMade === 0);
                 word.dying = true; // Let the animation play instead of instant splice
                 this.game.audio.playExplosion();
                 this.game.floatingTexts.push(new FloatingText(`+${word.text.length * 10}`, word.x, word.y - 15 * word.scale, "#00e5ff", 28));
-
-                // Check for Arcane Sigil QTE
-                if (word.variant === 'sigil' && word.mistakesMade === 0 && !this.game.isBossPhase) {
-                    this.game.sigilSystem.startSigilEvent();
-                } else if (word.variant === 'sigil') {
-                    this.game.floatingTexts.push(new FloatingText(`Sigil Lost...`, word.x, word.y - 30 * word.scale, "#ff4b4b", 20));
-                }
 
                 // Increase explosion size based on combo
                 const comboBonus = Math.min(this.game.stats.combo, 50) / 50;

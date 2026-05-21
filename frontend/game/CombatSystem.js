@@ -100,6 +100,18 @@ export class CombatSystem {
         }
     }
 
+    castBossSpell() {
+        if (!this.game.boss) return;
+        const blindDuration = this.game.stats.hasSkill('vision') ? 2000 : 4000;
+        this.game.blindTimer = blindDuration;
+
+        this.spawnExplosion(this.game.boss.x, this.game.boss.y, { particles: ['#8a2be2', '#4b0082', '#000000'] });
+        this.game.audio.playExplosion();
+        this.triggerShake(10, 400);
+
+        this.game.floatingTexts.push(new FloatingText("BOSS CASTS BLINDNESS!", this.game.canvas.width / 2, this.game.canvas.height / 2, "#8a2be2", 36));
+    }
+
     receiveAttack(type) {
         if (!this.game.isRunning) return;
 
@@ -118,6 +130,6 @@ export class CombatSystem {
 
     triggerShake(intensity, duration) {
         this.game.shakeIntensity = intensity;
-        this.game.shakeDuration = duration;
+        this.game.shakeTimer = duration;
     }
 }

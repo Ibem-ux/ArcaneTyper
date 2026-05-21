@@ -10,7 +10,6 @@ import { FloatingText } from './FloatingText.js';
 import { Achievements } from './Achievements.js';
 import { InputHandler } from './game/InputHandler.js';
 import { CombatSystem } from './game/CombatSystem.js';
-import { SigilEventSystem } from './game/SigilEventSystem.js';
 
 export class Game {
     constructor(canvasId) {
@@ -34,6 +33,7 @@ export class Game {
         this.lastHudUpdate = 0; // For throttled HUD updates
 
         this.isRunning = false;
+        this.isPaused = false;
         this.animationFrameId = null;
 
         this.playerAnimTimer = 0;
@@ -50,7 +50,6 @@ export class Game {
 
         this.inputHandler = new InputHandler(this);
         this.combatSystem = new CombatSystem(this);
-        this.sigilSystem = new SigilEventSystem(this);
 
         this.onGameOver = () => { };
     }
@@ -93,6 +92,13 @@ export class Game {
     }
 
     start(difficulty = 'normal', mode = 'classic', dictionaryType = 'classic') {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        const mobileInput = document.getElementById('mobile-input');
+        if (mobileInput) {
+            mobileInput.value = ' ';
+        }
         this.difficulty = difficulty;
         this.gameMode = mode;
         this.dictionary.setDictionary(dictionaryType);
@@ -105,12 +111,6 @@ export class Game {
         } else {
             this.dictionary.setSeed(null);
         }
-
-        this.sigilActive = false;
-        this.sigilTimer = 0;
-        this.sigilSequence = [];
-        this.sigilInputs = [];
-        this.sigilMaxTime = 0;
 
         this.reset();
         this.isRunning = true;
@@ -127,6 +127,10 @@ export class Game {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
         }
+        const mobileInput = document.getElementById('mobile-input');
+        if (mobileInput) {
+            mobileInput.value = ' ';
+        }
     }
 
     reset() {
@@ -138,6 +142,10 @@ export class Game {
         this.spawnTimer = 0;
         this.spawnCount = 0;
         this.scrambleTimer = 0;
+        this.isPaused = false;
+        this.wave = 1;
+        this.waveWordsTyped = 0;
+        this.waveTimer = 0;
 
         // Boss phase state
         this.isBossPhase = false;
@@ -174,6 +182,8 @@ export class Game {
         this.blindTimer = 0; // Tracks active Blind spell duration
 
         this.stats.reset();
+        const waveDisplay = document.getElementById('wave-display');
+        if (waveDisplay) waveDisplay.textContent = this.wave;
         this._initStars();
     }
 
@@ -184,7 +194,9 @@ export class Game {
         dt = Math.min(dt, 50);
         this.lastTime = currentTime;
 
-        this.update(dt);
+        if (!this.isPaused) {
+            this.update(dt);
+        }
         this.draw();
 
         if (this.isRunning) {
@@ -192,13 +204,68 @@ export class Game {
         }
 
         // Throttled HUD update: only update DOM stats every 200ms
-        if (currentTime - this.lastHudUpdate >= 200) {
+        if (!this.isPaused && currentTime - this.lastHudUpdate >= 200) {
             this.stats.updateHUD();
             this.lastHudUpdate = currentTime;
         }
     }
 
+    pause() {
+        if (!this.isRunning || this.isPaused) return;
+        this.isPaused = true;
+        this.audio.stopBackgroundMusic();
+        this.inputHandler.disable();
+    }
+
+    resume() {
+        if (!this.isRunning || !this.isPaused) return;
+        this.isPaused = false;
+        this.audio.startBackgroundMusic();
+        this.inputHandler.enable();
+        this.lastTime = performance.now();
+    }
+
     update(dt) {
+        // Progressive Difficulty Wave Scaling
+        if (!this.isBossPhase) {
+            this.waveTimer += dt;
+            // Advance wave every 30 seconds OR every 12 words typed
+            if (this.waveTimer >= 30000 || this.waveWordsTyped >= 12) {
+                this.wave++;
+                this.waveTimer = 0;
+                this.waveWordsTyped = 0;
+
+                // Scale up difficulty: Speed +6%, Spawn frequency +5% (spawn interval decreases by 5%)
+                this.currentSpeedMultiplier *= 1.06;
+                this.spawnInterval = Math.max(400, this.spawnInterval * 0.95);
+
+                // Update HUD wave counter
+                const waveDisplay = document.getElementById('wave-display');
+                if (waveDisplay) waveDisplay.textContent = this.wave;
+
+                // Play encouraging magic sound
+                this.audio.playExplosionSound();
+
+                // Show giant "WAVE X" announcement float text in the middle of screen
+                const announcementX = this.canvas.width / 2;
+                const announcementY = this.canvas.height / 3;
+                
+                const annText = new FloatingText(`WAVE ${this.wave}`, announcementX, announcementY, "#ffd700", 38);
+                annText.decay = 0.006; // decays much slower!
+                this.floatingTexts.push(annText);
+
+                const subText = new FloatingText("Spells accelerating...", announcementX, announcementY + 35, "#b892b0", 20);
+                subText.decay = 0.008;
+                this.floatingTexts.push(subText);
+
+                // Spawn premium magic explosion burst in center
+                this.combatSystem.spawnExplosion(announcementX, announcementY, {
+                    particles: '#ffd700',
+                    core: '#ffffff'
+                }, 1.5);
+            }
+        }
+
         this.spawnTimer += dt;
         this.survivalTime += dt;
 
@@ -221,13 +288,6 @@ export class Game {
                     if (!w.isTargeted && w.scramble) w.scramble();
                 });
             }
-        }
-
-        // Handle Sigil Event Time
-        if (this.sigilActive) {
-            this.sigilSystem.updateSigilEvent(dt);
-            // Freeze everything else while Sigil QTE is active
-            return;
         }
 
         // Pocket Dimension fade
@@ -643,46 +703,37 @@ export class Game {
         this.ctx.restore();
     }
 
-    spawnWord() {
-        this.spawnCount++;
-
+    _spawnSingleWord() {
         const targetX = this.canvas.width / 2;
         const targetY = this.canvas.height;
 
-        // Boss triggers every 50 standard spawns
-        if (this.spawnCount > 0 && this.spawnCount % 50 === 0 && !this.isBossPhase) {
-            this.startBossPhase();
-            return;
-        }
-
-        // Swarm chance: 5% (spawns 3-5 very short words at once)
-        if (Math.random() < 0.05) {
-            const numSwarm = 3 + Math.floor(Math.random() * 3);
-            for (let i = 0; i < numSwarm; i++) {
-                // Find a short word manually, or just use easy dict
-                let text = this.dictionary.getRandomWord('easy');
-                // Ensure it's very short for a swarm
-                while (text.length > 4) text = this.dictionary.getRandomWord('easy');
-
-                const sx = targetX + (Math.random() - 0.5) * 400;
-                const sy = -100 - Math.random() * 100;
-                const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, sx, targetY, { variant: 'swarm', gameMode: this.gameMode });
-                // Override spawn position manually
-                newWord.x = sx;
-                newWord.y = sy;
-                this.words.push(newWord);
-            }
-            return;
-        }
-
-        const text = this.dictionary.getWordForDifficulty(this.difficulty);
-
-        // 10% chance for Armored, 10% chance for Ghost, 3% chance for Sigil
+        let text = "";
         let variant = 'normal';
-        const rand = Math.random();
-        if (rand < 0.03) variant = 'sigil';
-        else if (rand < 0.13) variant = 'armored';
-        else if (rand < 0.23) variant = 'ghost';
+        let attempts = 0;
+        const maxAttempts = 15;
+
+        let maxAllowed = 1;
+        if (this.difficulty === 'hard') maxAllowed = 2;
+        else if (this.difficulty === 'hell') maxAllowed = 3;
+
+        do {
+            text = this.dictionary.getWordForDifficulty(this.difficulty);
+            
+            // 10% chance for Armored, 10% chance for Ghost
+            const rand = Math.random();
+            if (rand < 0.10) variant = 'armored';
+            else if (rand < 0.20) variant = 'ghost';
+            else variant = 'normal';
+
+            // Determine what the starting letter will be
+            const startingLetter = (variant === 'cursed') ? text[text.length - 1].toLowerCase() : text[0].toLowerCase();
+            const activeCount = this.words.filter(w => !w.dying && w.untyped && w.untyped.length > 0 && w.untyped[0].toLowerCase() === startingLetter).length;
+
+            if (activeCount < maxAllowed) {
+                break;
+            }
+            attempts++;
+        } while (attempts < maxAttempts);
 
         const margin = 100;
         let bestX = margin + Math.random() * (this.canvas.width - 2 * margin);
@@ -710,6 +761,62 @@ export class Game {
 
         const newWord = new Word(text, this.canvas.width, this.canvas.height, wordSpeedMultiplier, targetX, targetY, { variant, x: bestX, y: -50, gameMode: this.gameMode });
         this.words.push(newWord);
+    }
+
+    spawnWord() {
+        this.spawnCount++;
+
+        const targetX = this.canvas.width / 2;
+        const targetY = this.canvas.height;
+
+        // Boss triggers every 50 standard spawns
+        if (this.spawnCount > 0 && this.spawnCount % 50 === 0 && !this.isBossPhase) {
+            this.startBossPhase();
+            return;
+        }
+
+        // Swarm chance: 5% (spawns 3-5 very short words at once)
+        if (Math.random() < 0.05) {
+            const numSwarm = 3 + Math.floor(Math.random() * 3);
+            const spawnedSwarmLetters = [];
+            for (let i = 0; i < numSwarm; i++) {
+                let text = "";
+                let attempts = 0;
+                const maxAttempts = 15;
+                let maxAllowed = 1;
+                if (this.difficulty === 'hard') maxAllowed = 2;
+                else if (this.difficulty === 'hell') maxAllowed = 3;
+
+                do {
+                    text = this.dictionary.getRandomWord('easy');
+                    let subAttempts = 0;
+                    while (text.length > 4 && subAttempts < 10) {
+                        text = this.dictionary.getRandomWord('easy');
+                        subAttempts++;
+                    }
+
+                    const startingLetter = text[0].toLowerCase();
+                    const activeCount = this.words.filter(w => !w.dying && w.untyped && w.untyped.length > 0 && w.untyped[0].toLowerCase() === startingLetter).length;
+                    const swarmCount = spawnedSwarmLetters.filter(l => l === startingLetter).length;
+
+                    if (activeCount + swarmCount < maxAllowed) {
+                        spawnedSwarmLetters.push(startingLetter);
+                        break;
+                    }
+                    attempts++;
+                } while (attempts < maxAttempts);
+
+                const sx = targetX + (Math.random() - 0.5) * 400;
+                const sy = -100 - Math.random() * 100;
+                const newWord = new Word(text, this.canvas.width, this.canvas.height, this.currentSpeedMultiplier, sx, targetY, { variant: 'swarm', gameMode: this.gameMode });
+                newWord.x = sx;
+                newWord.y = sy;
+                this.words.push(newWord);
+            }
+            return;
+        }
+
+        this._spawnSingleWord();
     }
 
     startBossPhase() {

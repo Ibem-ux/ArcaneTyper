@@ -8,4 +8,7 @@ export default defineConfig({
       '@supabase/supabase-js': resolve(__dirname, './node_modules/@supabase/supabase-js'),
     },
   },
+  server: {
+    port: 3000,
+  },
 });

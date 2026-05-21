@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const practiceUi = document.getElementById('practice-ui');
   const workshopMenu = document.getElementById('workshop-menu');
   const achievementsMenu = document.getElementById('achievements-menu');
+  const pauseMenu = document.getElementById('pause-menu');
+  const resumeBtn = document.getElementById('resume-btn');
+  const pauseReturnBtn = document.getElementById('pause-return-btn');
 
   const menuMageTitle = document.getElementById('menu-mage-title');
   const openAchievementsBtn = document.getElementById('open-achievements-icon-btn');
@@ -250,6 +253,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Game Flow ─────────────────────────────────────────────────────────────
 
   function startGame() {
+    startBtn.blur();
+    restartBtn.blur();
+
     startMenu.classList.remove('active');
     startMenu.classList.add('hidden');
     gameOverMenu.classList.remove('active');
@@ -275,6 +281,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Focus invisible input to trigger mobile keyboard
     mobileInput.value = ' '; // Space for backspace catching
     mobileInput.focus();
+  }
+
+  function togglePause() {
+    if (!game.isRunning) return;
+
+    if (game.isPaused) {
+      game.resume();
+      if (pauseMenu) {
+        pauseMenu.classList.remove('active');
+        pauseMenu.classList.add('hidden');
+      }
+    } else {
+      if (duelActive) {
+        MagicalToast.show("Temporal magic is distorted in the Arena! You cannot freeze time in multiplayer.");
+        return;
+      }
+      if (game.isBossPhase) {
+        MagicalToast.show("Temporal magic is distorted during Boss fights! You cannot freeze time.");
+        return;
+      }
+      game.pause();
+      if (pauseMenu) {
+        pauseMenu.classList.remove('hidden');
+        pauseMenu.classList.add('active');
+      }
+    }
   }
 
   function startPractice(skipFocus = false) {
@@ -548,6 +580,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   startBtn.addEventListener('click', startGame);
   restartBtn.addEventListener('click', startGame);
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', togglePause);
+  }
+  if (pauseReturnBtn) {
+    pauseReturnBtn.addEventListener('click', () => {
+      togglePause();
+      game.stats.lives = 0;
+      game.triggerGameOver();
+    });
+  }
   if (returnDashboardBtn) {
     returnDashboardBtn.addEventListener('click', () => {
       game.stop();
@@ -1037,6 +1079,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   window.addEventListener('keydown', (e) => {
+    // Keyboard quick-start: Enter to begin from start menu
+    if (e.key === 'Enter' && startMenu.classList.contains('active') && !startMenu.classList.contains('hidden') && startMenu.style.filter !== 'blur(4px)') {
+      if (document.activeElement.tagName !== 'BUTTON') {
+        e.preventDefault();
+        startGame();
+        return;
+      }
+    }
+
     // Dismiss any active magical toasts instantly
     if (e.key === 'Escape') {
       const toastContainer = MagicalToast.toastContainer;
@@ -1049,6 +1100,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // If the Duel Lobby is active, Escape closes it and unblurs the dashboard
     if (e.key === 'Escape' && duelLobbyMenu.classList.contains('active')) {
       closeDuelLobby();
+      return;
+    }
+
+    // Toggle pause/resume during active gameplay
+    if (e.key === 'Escape' && game.isRunning) {
+      togglePause();
       return;
     }
 
