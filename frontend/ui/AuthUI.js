@@ -1,4 +1,5 @@
-import { supabase } from '../supabaseClient.js';
+import { supabase } from '../../backend/supabaseClient.js';
+
 
 export class AuthUI {
     constructor(game, startMenu, profileMenu) {

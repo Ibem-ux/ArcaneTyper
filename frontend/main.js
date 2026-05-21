@@ -1,13 +1,14 @@
 import './style.css';
 import { Game } from './Game.js';
-import { Leaderboard } from './Leaderboard.js';
 import { Scribe } from './Scribe.js';
-import { Duel } from './Duel.js';
 import { MagicalToast } from './ui/MagicalToast.js';
 import { ProfileUI } from './ui/ProfileUI.js';
 import { AuthUI } from './ui/AuthUI.js';
 import { MenuUI } from './ui/MenuUI.js';
-import { supabase } from './supabaseClient.js';
+import { Leaderboard } from '../backend/Leaderboard.js';
+import { Duel } from '../backend/Duel.js';
+import { supabase } from '../backend/supabaseClient.js';
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Ultra-strict font preloader for Canvas

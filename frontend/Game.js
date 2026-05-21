@@ -2,7 +2,8 @@ import { Word } from './Word.js';
 import { Boss } from './Boss.js';
 import { Projectile } from './Projectile.js';
 import { WordDictionary } from './WordDictionary.js';
-import { Stats } from './Stats.js';
+import { Stats } from '../backend/Stats.js';
+
 import { Particle } from './Particle.js';
 import { AudioController } from './AudioController.js';
 import { FloatingText } from './FloatingText.js';
