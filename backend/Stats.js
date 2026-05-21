@@ -23,14 +23,39 @@ export class Stats {
         this.bestWPM = parseInt(localStorage.getItem('typerMaster_wpm') || '0', 10);
 
         // --- RPG Elements ---
-        this.totalXP = parseInt(localStorage.getItem('typerMaster_xp') || '0', 10);
-        this.playerLevel = Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
+        this._totalXP = parseInt(localStorage.getItem('typerMaster_xp') || '0', 10);
+        this._playerLevel = Math.floor(Math.sqrt(this._totalXP / 500)) + 1;
         this.unlockedSkills = JSON.parse(localStorage.getItem('typerMaster_skills') || '[]');
         this.wandColor = localStorage.getItem('typerMaster_wandColor') || '#ff00ff';
         this.mageName = localStorage.getItem('typerMaster_mageName') || null;
         this.mageClass = localStorage.getItem('typerMaster_mageClass') || 'Novice';
+        this.selectedCharacter = localStorage.getItem('typerMaster_selectedCharacter') || 'wizard';
 
         this.bindDOM();
+    }
+
+    isAdmin() {
+        if (!this.mageName) return false;
+        const name = this.mageName.toLowerCase().trim();
+        return name === 'admin' || name === 'guest admin' || name.includes('admin');
+    }
+
+    get totalXP() {
+        if (this.isAdmin()) return 999999;
+        return this._totalXP;
+    }
+
+    set totalXP(val) {
+        this._totalXP = val;
+    }
+
+    get playerLevel() {
+        if (this.isAdmin()) return 99;
+        return this._playerLevel;
+    }
+
+    set playerLevel(val) {
+        this._playerLevel = val;
     }
 
     bindDOM() {
@@ -111,6 +136,10 @@ export class Stats {
         this.score += points;
         this.wordsTyped++;
 
+        if (this.achievements) {
+            this.achievements.onEvent('score_update', { score: this.score });
+        }
+
         // Philosopher's Focus Skill: +2 XP for perfectly typed words
         if (isPerfect && this.hasSkill('philosopher')) {
             this.addXP(2);
@@ -156,7 +185,9 @@ export class Stats {
 
         // Standard WPM: keystrokes / 5 / minutes
         const wpm = Math.round((countInWindow / 5) / windowSpanMin);
-        if (this.achievements && wpm > 0) this.achievements.onEvent('wpm_update', { wpm });
+        if (this.achievements && wpm > 0) {
+            this.achievements.onEvent('wpm_update', { wpm, accuracy: this.getAccuracy() });
+        }
         return wpm;
     }
 
@@ -282,6 +313,7 @@ export class Stats {
     }
 
     hasSkill(skillId) {
+        if (this.isAdmin()) return true;
         return this.unlockedSkills.includes(skillId);
     }
 
@@ -380,5 +412,25 @@ export class Stats {
         this.lives = this.hasSkill('life') ? 5 : 4;
         this.maxMana = this.hasSkill('mana') ? 120 : 100;
         this.combo = this.hasSkill('combo') ? 10 : 0;
+    }
+
+    setSelectedCharacter(characterId) {
+        this.selectedCharacter = characterId;
+        localStorage.setItem('typerMaster_selectedCharacter', characterId);
+        this.saveProgression();
+    }
+
+    isCharacterUnlocked(charId) {
+        if (this.isAdmin()) return true;
+        if (charId === 'wizard') return true;
+        if (!this.achievements) return false;
+        
+        if (charId === 'gojo') {
+            return this.achievements.unlocked.has('limitless_focus');
+        }
+        if (charId === 'sukuna') {
+            return this.achievements.unlocked.has('king_of_curses');
+        }
+        return false;
     }
 }

@@ -837,12 +837,12 @@
 
       <!-- Mage Profile Menu -->
       <div id="profile-menu" class="overlay-menu hidden"
-        style="z-index: 35; justify-content: center; overflow: hidden;">
+        style="z-index: 35; justify-content: flex-start; overflow-y: auto;">
         <div
           style="margin: auto; padding: 5px 0; display: flex; flex-direction: column; align-items: center; width: 100%; pointer-events: none;">
           <h2 style="position: relative; z-index: 10; pointer-events: auto; margin-bottom: 0; font-size: 1.6rem;">MAGE
             PROFILE</h2>
-          <div
+          <div class="profile-content"
             style="display: flex; flex-direction: column; gap: 0.8rem; width: 400px; max-width: 90vw; padding: 0.8rem; position: relative; z-index: 10; pointer-events: auto;">
 
             <div style="text-align: center;">
@@ -874,6 +874,45 @@
                 <option value="Chronomancer" style="background: var(--bg-deep); text-shadow: none;">Chronomancer
                 </option>
               </select>
+            </div>
+
+            <!-- Character Skin Selection -->
+            <div style="text-align: center; padding: 8px 10px; border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 8px; background: rgba(0, 0, 0, 0.45); box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.05);">
+              <p style="color: var(--text-muted); font-size: 0.75rem; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Avatar Skins</p>
+              <div id="character-skin-grid" style="display: flex; justify-content: space-around; gap: 8px; margin-top: 5px;">
+                
+                <!-- Wizard Card -->
+                <div class="skin-card active" id="skin-wizard" data-char="wizard" style="cursor: pointer; flex: 1; padding: 6px; border: 1.5px solid var(--accent-primary); border-radius: 6px; background: rgba(255, 255, 255, 0.02); transition: all 0.3s ease; position: relative;">
+                  <div class="skin-avatar-preview wizard-preview" style="height: 35px; width: 100%; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+                    <div style="width: 16px; height: 20px; background: #29b6f6; border-radius: 50% 50% 0 0; position: relative; box-shadow: 0 0 8px #29b6f6;"></div>
+                  </div>
+                  <span style="font-size: 0.7rem; font-weight: bold; color: white; display: block;">WIZARD</span>
+                  <span style="font-size: 0.55rem; color: #ffd700; display: block; font-family: monospace; margin-top: 1px;">Unlocked</span>
+                </div>
+
+                <!-- Gojo Card -->
+                <div class="skin-card locked" id="skin-gojo" data-char="gojo" style="cursor: pointer; flex: 1; padding: 6px; border: 1.5px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: rgba(0, 0, 0, 0.3); transition: all 0.3s ease; position: relative;" title="Unlock: 'Limitless Focus' achievement (Reach 100+ WPM & 95%+ accuracy)">
+                  <div class="skin-avatar-preview gojo-preview" style="height: 35px; width: 100%; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+                    <div style="width: 14px; height: 18px; background: #00e5ff; border-radius: 3px; position: relative; box-shadow: 0 0 8px #00e5ff;">
+                      <div style="position: absolute; top: 3px; left: 3px; width: 8px; height: 2px; background: #000;"></div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.7rem; font-weight: bold; color: #00e5ff; display: block;">GOJO</span>
+                  <span class="skin-status" style="font-size: 0.55rem; color: #ff5252; display: block; font-family: monospace; margin-top: 1px;">LOCKED</span>
+                </div>
+
+                <!-- Sukuna Card -->
+                <div class="skin-card locked" id="skin-sukuna" data-char="sukuna" style="cursor: pointer; flex: 1; padding: 6px; border: 1.5px solid rgba(255, 255, 255, 0.1); border-radius: 6px; background: rgba(0, 0, 0, 0.3); transition: all 0.3s ease; position: relative;" title="Unlock: 'King of Curses' achievement (100x Combo or 10,000+ points)">
+                  <div class="skin-avatar-preview sukuna-preview" style="height: 35px; width: 100%; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+                    <div style="width: 14px; height: 18px; background: #ff1744; border-radius: 3px; position: relative; box-shadow: 0 0 8px #ff1744;">
+                      <div style="position: absolute; top: 4px; left: 2px; width: 10px; height: 2px; background: #ff1744; box-shadow: 0 0 4px #ff1744;"></div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.7rem; font-weight: bold; color: #ff1744; display: block;">SUKUNA</span>
+                  <span class="skin-status" style="font-size: 0.55rem; color: #ff5252; display: block; font-family: monospace; margin-top: 1px;">LOCKED</span>
+                </div>
+
+              </div>
             </div>
 
             <!-- Run History Graph -->

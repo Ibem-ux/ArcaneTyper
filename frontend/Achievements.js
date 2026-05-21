@@ -14,6 +14,16 @@ export class Achievements {
             }
         }
 
+        // Setup dynamic has method to unlock everything for admin
+        const originalHas = this.unlocked.has;
+        this.unlocked.has = (id) => {
+            const mageName = localStorage.getItem('typerMaster_mageName');
+            if (mageName && mageName.toLowerCase().trim().includes('admin')) {
+                return true;
+            }
+            return originalHas.call(this.unlocked, id);
+        };
+
         // Achievement definitions
         this.definitions = {
             'first_blood': { id: 'first_blood', name: 'First Blood', description: 'Type your first word.', title: 'Apprentice' },
@@ -21,7 +31,9 @@ export class Achievements {
             'untouchable': { id: 'untouchable', name: 'Untouchable', description: 'Reach a 50x Combo streak.', title: 'The Undefeated' },
             'boss_slayer': { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat your first Boss.', title: 'Dragonbane' },
             'millionaire': { id: 'millionaire', name: 'Archmage', description: 'Reach Level 10.', title: 'Archmage' },
-            'survivor': { id: 'survivor', name: 'Survivor', description: 'Survive for 5 minutes in a single run.', title: 'The Enduring' }
+            'survivor': { id: 'survivor', name: 'Survivor', description: 'Survive for 5 minutes in a single run.', title: 'The Enduring' },
+            'limitless_focus': { id: 'limitless_focus', name: 'Limitless Focus', description: 'Reach 100+ WPM with 95%+ accuracy.', title: 'The Honored One' },
+            'king_of_curses': { id: 'king_of_curses', name: 'King of Curses', description: 'Reach a 100x Combo streak or score 10,000+ points.', title: 'King of Curses' }
         };
         
         // Callbacks for UI updates
@@ -36,9 +48,17 @@ export class Achievements {
         if (eventName === 'word_typed') {
             this.checkUnlock('first_blood');
         } else if (eventName === 'wpm_update') {
-            if (data.wpm >= 100) this.checkUnlock('speed_demon');
+            if (data.wpm >= 100) {
+                this.checkUnlock('speed_demon');
+                if (data.accuracy >= 95) {
+                    this.checkUnlock('limitless_focus');
+                }
+            }
         } else if (eventName === 'combo_update') {
             if (data.combo >= 50) this.checkUnlock('untouchable');
+            if (data.combo >= 100) this.checkUnlock('king_of_curses');
+        } else if (eventName === 'score_update') {
+            if (data.score >= 10000) this.checkUnlock('king_of_curses');
         } else if (eventName === 'boss_defeated') {
             this.checkUnlock('boss_slayer');
         } else if (eventName === 'level_up') {
@@ -65,10 +85,18 @@ export class Achievements {
     }
 
     getUnlockedTitles() {
+        const mageName = localStorage.getItem('typerMaster_mageName');
+        if (mageName && mageName.toLowerCase().trim().includes('admin')) {
+            return Object.values(this.definitions).map(def => def.title);
+        }
         return Array.from(this.unlocked).map(id => this.definitions[id].title);
     }
     
     getUnlockedAchievements() {
+        const mageName = localStorage.getItem('typerMaster_mageName');
+        if (mageName && mageName.toLowerCase().trim().includes('admin')) {
+            return Object.values(this.definitions);
+        }
         return Array.from(this.unlocked).map(id => this.definitions[id]);
     }
 }

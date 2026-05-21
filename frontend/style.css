@@ -1639,3 +1639,134 @@ h2 {
     transform: translate(-50%, -80%) scale(0.8);
   }
 }
+
+/* ── Character Skin Card Styles ── */
+.skin-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.skin-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+}
+
+.skin-card.locked {
+  filter: grayscale(0.85) contrast(0.9);
+  opacity: 0.65;
+}
+
+.skin-card.locked:hover {
+  filter: grayscale(0.6) contrast(1.0);
+  opacity: 0.85;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.skin-card.active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+}
+
+/* Active specific borders & glows */
+#skin-wizard.active {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 12px rgba(41, 182, 246, 0.3);
+}
+
+#skin-gojo.active {
+  border-color: #00e5ff !important;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.45);
+}
+
+#skin-sukuna.active {
+  border-color: #ff1744 !important;
+  box-shadow: 0 0 12px rgba(255, 23, 68, 0.45);
+}
+
+/* Previews keyframe animations for high visual quality */
+.skin-avatar-preview div {
+  animation: floatPreview 3s ease-in-out infinite;
+}
+
+.gojo-preview div {
+  animation-delay: 0.5s;
+}
+
+.sukuna-preview div {
+  animation-delay: 1s;
+}
+
+@keyframes floatPreview {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.05);
+  }
+}
+
+/* ── Profile Menu Scroll & Responsiveness ── */
+#profile-menu {
+  padding: 1.5rem 0;
+}
+
+#profile-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+#profile-menu::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+#profile-menu::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+#profile-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Compact layout by default for the 600px container */
+#profile-menu h2 {
+  font-size: 1.3rem !important;
+  margin-bottom: 0.2rem !important;
+}
+
+#profile-menu .profile-content {
+  gap: 0.5rem !important;
+}
+
+#profile-menu .skin-avatar-preview {
+  height: 28px !important;
+}
+
+#profile-history-chart {
+  height: 80px !important;
+}
+
+/* Even more compact for very small screen heights */
+@media (max-height: 550px) {
+  #profile-menu {
+    padding: 0.5rem 0;
+  }
+  
+  #profile-menu h2 {
+    font-size: 1.1rem !important;
+  }
+
+  #profile-menu .profile-content {
+    gap: 0.3rem !important;
+  }
+
+  #profile-menu .skin-avatar-preview {
+    height: 22px !important;
+  }
+
+  #profile-history-chart {
+    height: 60px !important;
+  }
+}

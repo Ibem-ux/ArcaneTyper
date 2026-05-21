@@ -356,4 +356,12 @@ export class AudioController {
             this.tensionGain.gain.setTargetAtTime(tensionVolume, t, 0.5);
         }
     }
+
+    playSound(soundName) {
+        if (soundName === 'click') {
+            this.playTypeSound();
+        } else if (soundName === 'tada') {
+            this.playLevelUp();
+        }
+    }
 }

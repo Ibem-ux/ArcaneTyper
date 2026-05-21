@@ -123,10 +123,25 @@ export class InputHandler {
 
                 // Fire counter-attack projectile at boss
                 if (this.game.isBossPhase && this.game.boss && !this.game.boss.isDead && word.isBossAttack) {
-                    const startX = this.game.canvas.width / 2 + 10;
-                    const startY = this.game.canvas.height - 45;
+                    const startX = this.game.canvas.width / 2;
+                    const startY = this.game.canvas.height - 40;
                     const targetXOffset = (Math.random() - 0.5) * 100;
-                    const projectile = new Projectile(startX, startY, this.game.boss.x + targetXOffset, this.game.boss.y + 20, word.elementColors.particles);
+                    
+                    let colors = word.elementColors.particles;
+                    let type = 'normal';
+                    
+                    const selectedChar = this.game.stats.selectedCharacter;
+                    if (selectedChar === 'gojo') {
+                        // Alternate blue and red energy orbs
+                        const isBlue = Math.random() < 0.5;
+                        type = isBlue ? 'gojo_blue' : 'gojo_red';
+                        colors = isBlue ? ['#00e5ff', '#ffffff'] : ['#ff1744', '#ffffff'];
+                    } else if (selectedChar === 'sukuna') {
+                        type = 'sukuna_slash';
+                        colors = ['#ff1744', '#ffea00'];
+                    }
+                    
+                    const projectile = new Projectile(startX, startY, this.game.boss.x + targetXOffset, this.game.boss.y + 20, colors, type);
                     this.game.projectiles.push(projectile);
                 }
 

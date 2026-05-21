@@ -629,6 +629,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         authUI.profileNickname.innerText = game.stats.mageName || 'Unknown Mage';
       }
 
+      profileUI.updateMenuStats();
+
       startMenu.style.pointerEvents = 'none';
       startMenu.style.opacity = '0.5';
       startMenu.style.filter = 'blur(4px)';
@@ -647,6 +649,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       startMenu.style.pointerEvents = 'auto';
       startMenu.style.opacity = '';
       startMenu.style.filter = '';
+    });
+  }
+
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      // Clear localStorage keys
+      localStorage.removeItem('typerMaster_xp');
+      localStorage.removeItem('typerMaster_skills');
+      localStorage.removeItem('typerMaster_wandColor');
+      localStorage.removeItem('typerMaster_mageClass');
+      localStorage.removeItem('typerMaster_mageName');
+      localStorage.removeItem('typerMaster_achievements');
+      localStorage.removeItem('typerMaster_selectedCharacter');
+      localStorage.removeItem('typerMaster_equippedTitle');
+      localStorage.removeItem('typerMaster_score');
+      localStorage.removeItem('typerMaster_wpm');
+
+      try {
+        const { supabase } = await import('../backend/supabaseClient.js');
+        if (supabase) {
+          await supabase.auth.signOut();
+        }
+      } catch (e) {
+        console.warn("Failed to sign out from Supabase", e);
+      }
+
+      // Reload window to return to fresh state
+      window.location.reload();
     });
   }
 

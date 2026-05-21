@@ -559,55 +559,253 @@ export class Game {
 
         this.ctx.shadowBlur = 0;
 
-        // --- Staff ---
-        this.ctx.save();
-        const animProgress = this.playerAnimTimer > 0 ? this.playerAnimTimer / 200 : 0;
-        const staffAngle = (Math.PI / 6) * (1 - animProgress);
-        const staffBaseX = wizX + 10;
-        const staffBaseY = wizY - 5;
+        // --- Aura / Weapon / Character Silhouette Drawing ---
+        if (this.stats.selectedCharacter === 'wizard') {
+            // --- Staff ---
+            this.ctx.save();
+            const animProgress = this.playerAnimTimer > 0 ? this.playerAnimTimer / 200 : 0;
+            const staffAngle = (Math.PI / 6) * (1 - animProgress);
+            const staffBaseX = wizX + 10;
+            const staffBaseY = wizY - 5;
 
-        this.ctx.translate(staffBaseX, staffBaseY);
-        this.ctx.rotate(staffAngle);
+            this.ctx.translate(staffBaseX, staffBaseY);
+            this.ctx.rotate(staffAngle);
 
-        // Pole
-        this.ctx.fillStyle = '#4a3320';
-        this.ctx.fillRect(-2, -40, 5, 45);
+            // Pole
+            this.ctx.fillStyle = '#4a3320';
+            this.ctx.fillRect(-2, -40, 5, 45);
 
-        // Pulsing gem glow
-        const gemGlow = 12 + Math.sin(performance.now() / 300) * 8;
-        this.ctx.beginPath();
-        this.ctx.arc(0, -42, 6, 0, Math.PI * 2);
-        this.ctx.fillStyle = this.stats.wandColor;
-        this.ctx.shadowColor = this.stats.wandColor;
-        this.ctx.shadowBlur = gemGlow;
-        this.ctx.fill();
+            // Pulsing gem glow
+            const gemGlow = 12 + Math.sin(performance.now() / 300) * 8;
+            this.ctx.beginPath();
+            this.ctx.arc(0, -42, 6, 0, Math.PI * 2);
+            this.ctx.fillStyle = this.stats.wandColor;
+            this.ctx.shadowColor = this.stats.wandColor;
+            this.ctx.shadowBlur = gemGlow;
+            this.ctx.fill();
 
-        this.ctx.restore();
-        this.ctx.shadowBlur = 0;
+            this.ctx.restore();
+            this.ctx.shadowBlur = 0;
 
-        // --- Wizard Silhouette ---
-        this.ctx.fillStyle = '#110a17';
-        this.ctx.strokeStyle = '#3a2b52';
-        this.ctx.lineWidth = 1;
+            // --- Wizard Silhouette ---
+            this.ctx.fillStyle = '#110a17';
+            this.ctx.strokeStyle = '#3a2b52';
+            this.ctx.lineWidth = 1;
 
-        // Cloak
-        this.ctx.beginPath();
-        this.ctx.moveTo(wizX, wizY - 24);
-        this.ctx.lineTo(wizX - 15, wizY + 18);
-        this.ctx.quadraticCurveTo(wizX, wizY + 21, wizX + 15, wizY + 18);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
+            // Cloak
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX, wizY - 24);
+            this.ctx.lineTo(wizX - 15, wizY + 18);
+            this.ctx.quadraticCurveTo(wizX, wizY + 21, wizX + 15, wizY + 18);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
 
-        // Hat
-        this.ctx.beginPath();
-        this.ctx.moveTo(wizX - 11, wizY - 21);
-        this.ctx.quadraticCurveTo(wizX, wizY - 18, wizX + 11, wizY - 21);
-        this.ctx.lineTo(wizX + 1, wizY - 45);
-        this.ctx.lineTo(wizX - 1, wizY - 45);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
+            // Hat
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 11, wizY - 21);
+            this.ctx.quadraticCurveTo(wizX, wizY - 18, wizX + 11, wizY - 21);
+            this.ctx.lineTo(wizX + 1, wizY - 45);
+            this.ctx.lineTo(wizX - 1, wizY - 45);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+        } else if (this.stats.selectedCharacter === 'gojo') {
+            // --- Gojo Aura ---
+            this.ctx.save();
+            const glow = 15 + Math.sin(performance.now() / 200) * 8;
+            const auraGrad = this.ctx.createRadialGradient(wizX, wizY - 15, 5, wizX, wizY - 15, 45);
+            auraGrad.addColorStop(0, 'rgba(0, 229, 255, 0.45)');
+            auraGrad.addColorStop(0.5, 'rgba(0, 119, 255, 0.2)');
+            auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            this.ctx.fillStyle = auraGrad;
+            this.ctx.beginPath();
+            this.ctx.arc(wizX, wizY - 15, 45, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+
+            // --- Floating Red & Blue Energy Orbs ---
+            this.ctx.save();
+            const animProgress = this.playerAnimTimer > 0 ? this.playerAnimTimer / 200 : 0;
+            const floatOffset = Math.sin(performance.now() / 200) * 6;
+            
+            // Blue Orb (Lapse)
+            this.ctx.beginPath();
+            this.ctx.arc(wizX - 25, wizY - 20 + floatOffset, 5, 0, Math.PI * 2);
+            this.ctx.fillStyle = '#00e5ff';
+            this.ctx.shadowColor = '#00e5ff';
+            this.ctx.shadowBlur = 12 + animProgress * 15;
+            this.ctx.fill();
+            
+            // Red Orb (Reversal)
+            this.ctx.beginPath();
+            this.ctx.arc(wizX + 25, wizY - 20 - floatOffset, 5, 0, Math.PI * 2);
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.shadowColor = '#ff1744';
+            this.ctx.shadowBlur = 12 + animProgress * 15;
+            this.ctx.fill();
+            this.ctx.restore();
+
+            // --- Gojo Silhouette ---
+            this.ctx.save();
+            this.ctx.fillStyle = '#0a0912'; // Sleek dark midnight blue/black
+            this.ctx.strokeStyle = '#00e5ff'; // Cyan edge stroke
+            this.ctx.lineWidth = 1.5;
+
+            // Body (high-collar jacket styling)
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 16, wizY + 18);
+            this.ctx.lineTo(wizX - 12, wizY - 15); // left shoulder
+            this.ctx.lineTo(wizX + 12, wizY - 15); // right shoulder
+            this.ctx.lineTo(wizX + 16, wizY + 18);
+            this.ctx.quadraticCurveTo(wizX, wizY + 21, wizX - 16, wizY + 18);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // High Collar
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 7, wizY - 15);
+            this.ctx.lineTo(wizX - 9, wizY - 26);
+            this.ctx.lineTo(wizX - 2, wizY - 21);
+            this.ctx.lineTo(wizX + 2, wizY - 21);
+            this.ctx.lineTo(wizX + 9, wizY - 26);
+            this.ctx.lineTo(wizX + 7, wizY - 15);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Head Base
+            this.ctx.beginPath();
+            this.ctx.arc(wizX, wizY - 28, 7, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Spiky Hair
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 7, wizY - 30);
+            this.ctx.lineTo(wizX - 11, wizY - 38);
+            this.ctx.lineTo(wizX - 6, wizY - 35);
+            this.ctx.lineTo(wizX - 5, wizY - 45);
+            this.ctx.lineTo(wizX - 1, wizY - 37);
+            this.ctx.lineTo(wizX, wizY - 47); // central tall spike
+            this.ctx.lineTo(wizX + 2, wizY - 37);
+            this.ctx.lineTo(wizX + 5, wizY - 43);
+            this.ctx.lineTo(wizX + 6, wizY - 34);
+            this.ctx.lineTo(wizX + 10, wizY - 38);
+            this.ctx.lineTo(wizX + 7, wizY - 30);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Glowing Six Eyes
+            this.ctx.fillStyle = '#00e5ff';
+            this.ctx.shadowColor = '#00e5ff';
+            this.ctx.shadowBlur = 10;
+            this.ctx.beginPath();
+            this.ctx.arc(wizX - 2.5, wizY - 28, 1.5, 0, Math.PI * 2);
+            this.ctx.arc(wizX + 2.5, wizY - 28, 1.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        } else if (this.stats.selectedCharacter === 'sukuna') {
+            // --- Sukuna Aura ---
+            this.ctx.save();
+            const auraGrad = this.ctx.createRadialGradient(wizX, wizY - 15, 5, wizX, wizY - 15, 50);
+            auraGrad.addColorStop(0, 'rgba(255, 23, 68, 0.45)');
+            auraGrad.addColorStop(0.5, 'rgba(213, 0, 0, 0.2)');
+            auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            this.ctx.fillStyle = auraGrad;
+            this.ctx.beginPath();
+            this.ctx.arc(wizX, wizY - 15, 50, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+
+            // --- Floating Crescent Slash Rings ---
+            this.ctx.save();
+            const animProgress = this.playerAnimTimer > 0 ? this.playerAnimTimer / 200 : 0;
+            const rotateSpeed = performance.now() / 150;
+            
+            this.ctx.translate(wizX, wizY - 18);
+            this.ctx.rotate(rotateSpeed);
+            
+            this.ctx.strokeStyle = '#ff1744';
+            this.ctx.shadowColor = '#ff1744';
+            this.ctx.shadowBlur = 10 + animProgress * 10;
+            this.ctx.lineWidth = 1.8;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 20, -Math.PI / 6, Math.PI / 6);
+            this.ctx.stroke();
+            
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 20, Math.PI - Math.PI / 6, Math.PI + Math.PI / 6);
+            this.ctx.stroke();
+            this.ctx.restore();
+
+            // --- Sukuna Silhouette ---
+            this.ctx.save();
+            this.ctx.fillStyle = '#1c0c0c'; // Deep demonic maroon/black
+            this.ctx.strokeStyle = '#ff1744'; // Crimson edge stroke
+            this.ctx.lineWidth = 1.5;
+
+            // Loose Kimono body (draped V-neck shape)
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 18, wizY + 18);
+            this.ctx.lineTo(wizX - 13, wizY - 14); // left shoulder
+            this.ctx.lineTo(wizX - 4, wizY - 14);  // left neck
+            this.ctx.lineTo(wizX, wizY - 5);      // plunging V-neck line
+            this.ctx.lineTo(wizX + 4, wizY - 14);  // right neck
+            this.ctx.lineTo(wizX + 13, wizY - 14); // right shoulder
+            this.ctx.lineTo(wizX + 18, wizY + 18);
+            this.ctx.quadraticCurveTo(wizX, wizY + 21, wizX - 18, wizY + 18);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Head Base
+            this.ctx.beginPath();
+            this.ctx.arc(wizX, wizY - 26, 7, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Spiky slicked back hair (Sukuna's hairstyle)
+            this.ctx.beginPath();
+            this.ctx.moveTo(wizX - 6, wizY - 28);
+            this.ctx.lineTo(wizX - 10, wizY - 35);
+            this.ctx.lineTo(wizX - 5, wizY - 32);
+            this.ctx.lineTo(wizX - 5, wizY - 41);
+            this.ctx.lineTo(wizX - 1, wizY - 35);
+            this.ctx.lineTo(wizX, wizY - 43); // central spikes
+            this.ctx.lineTo(wizX + 1, wizY - 35);
+            this.ctx.lineTo(wizX + 6, wizY - 40);
+            this.ctx.lineTo(wizX + 5, wizY - 31);
+            this.ctx.lineTo(wizX + 10, wizY - 34);
+            this.ctx.lineTo(wizX + 6, wizY - 27);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Glowing red tattoo eyes & markings
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.shadowColor = '#ff1744';
+            this.ctx.shadowBlur = 10;
+            
+            // Primary eyes
+            this.ctx.beginPath();
+            this.ctx.arc(wizX - 2.5, wizY - 26, 1.2, 0, Math.PI * 2);
+            this.ctx.arc(wizX + 2.5, wizY - 26, 1.2, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Under-eye slit marks
+            this.ctx.beginPath();
+            this.ctx.arc(wizX - 2.5, wizY - 23.5, 0.8, 0, Math.PI * 2);
+            this.ctx.arc(wizX + 2.5, wizY - 23.5, 0.8, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Forehead tattoo mark
+            this.ctx.fillRect(wizX - 0.8, wizY - 30.5, 1.6, 2.5);
+
+            this.ctx.restore();
+        }
 
         this.ctx.restore();
 

@@ -35,15 +35,43 @@ export class CombatSystem {
 
         this.game.audio.playExplosion();
         // Massive screen shake for Nova
-        this.game.combatSystem.triggerShake(30, 800);
+        this.game.combatSystem.triggerShake(35, 900);
 
-        // Flash screen intensely
-        this.game.ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
-        this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+        const selectedChar = this.game.stats.selectedCharacter;
+        if (selectedChar === 'gojo') {
+            // Flash screen purple
+            this.game.ctx.fillStyle = 'rgba(224, 64, 251, 0.85)';
+            this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
 
-        // Spawn massive center explosion and Shockwave
-        this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 5.0);
-        this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave'));
+            // Purple and cyan explosion
+            this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#d500f9', '#00e5ff', '#ffffff', '#aa00ff'] }, 5.5);
+            this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave_purple'));
+            
+            // Hollow Purple title
+            this.game.floatingTexts.push(new FloatingText("HOLLOW PURPLE", this.game.canvas.width / 2, this.game.canvas.height / 2 - 55, "#e040fb", 42));
+        } else if (selectedChar === 'sukuna') {
+            // Flash screen red
+            this.game.ctx.fillStyle = 'rgba(255, 23, 68, 0.85)';
+            this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+
+            // Crimson and dark slash explosion
+            this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#ff1744', '#212121', '#ffc107', '#d50000'] }, 5.5);
+            this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave_red'));
+
+            // Malevolent Shrine title
+            this.game.floatingTexts.push(new FloatingText("MALEVOLENT SHRINE", this.game.canvas.width / 2, this.game.canvas.height / 2 - 55, "#ff1744", 42));
+        } else {
+            // Flash screen blue/cyan
+            this.game.ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';
+            this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+
+            // Spawn massive center explosion and Shockwave
+            this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#00e5ff', '#ffffff', '#0077ff'] }, 5.0);
+            this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave'));
+
+            // Supernova title
+            this.game.floatingTexts.push(new FloatingText("SUPERNOVA", this.game.canvas.width / 2, this.game.canvas.height / 2 - 55, "#00e5ff", 42));
+        }
 
         // Destroy all normal words
         for (let i = this.game.words.length - 1; i >= 0; i--) {

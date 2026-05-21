@@ -25,10 +25,16 @@ export class Particle {
         this.runeChar = String.fromCharCode(0x16A0 + Math.floor(Math.random() * 80)); // Runic block
 
         // Setup shockwave properties if indicated
-        if (color === 'shockwave') {
+        if (color === 'shockwave' || color === 'shockwave_purple' || color === 'shockwave_red') {
             this.isShockwave = true;
             this.isRune = false;
-            this.color = 'rgba(255, 215, 0, 0.8)'; // Gold expanding ring
+            if (color === 'shockwave_purple') {
+                this.color = 'rgba(224, 64, 251, 0.9)'; // Neon purple expanding ring
+            } else if (color === 'shockwave_red') {
+                this.color = 'rgba(255, 23, 68, 0.9)'; // Crimson red expanding ring
+            } else {
+                this.color = 'rgba(255, 215, 0, 0.8)'; // Gold expanding ring
+            }
             this.vx = 0;
             this.vy = 0;
             this.gravity = 0;
