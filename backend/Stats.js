@@ -244,12 +244,47 @@ export class Stats {
     updateLivesDisplay() {
         if (!this.livesContainer) return;
         const hearts = this.livesContainer.querySelectorAll('.barrier');
+        const char = this.selectedCharacter;
 
         hearts.forEach((heart, index) => {
-            if (index >= this.lives) {
+            const isActive = index < (this.lives - 1);
+
+            if (!isActive) {
                 heart.classList.add('lost');
+                heart.style.backgroundColor = 'transparent';
+                heart.style.color = '';
+                heart.style.boxShadow = 'none';
+                heart.style.border = '1px solid rgba(255,255,255,0.15)';
             } else {
                 heart.classList.remove('lost');
+
+                if (char === 'gojo') {
+                    // Gojo palette: Cyan -> Indigo -> Magenta
+                    let color = '#00e5ff'; // 3+ hits
+                    if (this.lives === 3) color = '#5c6bc0'; // 2 hits
+                    else if (this.lives === 2) color = '#d81b60'; // 1 hit
+                    
+                    heart.style.backgroundColor = color;
+                    heart.style.color = color;
+                    heart.style.boxShadow = `0 0 10px ${color}`;
+                    heart.style.border = 'none';
+                } else if (char === 'sukuna') {
+                    // Sukuna palette: Crimson -> Gold -> Dark Red
+                    let color = '#ff1744'; // 3+ hits
+                    if (this.lives === 3) color = '#ffab00'; // 2 hits
+                    else if (this.lives === 2) color = '#b71c1c'; // 1 hit
+                    
+                    heart.style.backgroundColor = color;
+                    heart.style.color = color;
+                    heart.style.boxShadow = `0 0 10px ${color}`;
+                    heart.style.border = 'none';
+                } else {
+                    // Default Wizard: clear inline styles so style.css nth-child classes govern
+                    heart.style.backgroundColor = '';
+                    heart.style.color = '';
+                    heart.style.boxShadow = '';
+                    heart.style.border = '';
+                }
             }
         });
     }
