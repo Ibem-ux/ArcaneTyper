@@ -1063,7 +1063,11 @@ export class Game {
         this.stats.updateHUD();
         this.stats.saveHighScore();
         this.stats.recordWpm(this.stats.getSessionWPM());
-        this.stats.addXP(Math.floor(this.stats.score / 10));
+        // AT-M4 fix (2026-08-24): the extra floor(score/10) XP grant that
+        // lived here was removed. saveHighScore already converts 10% of
+        // score to XP (+ Mage's Greed), matching the documented intent and
+        // the duel path. Players were effectively earning ~20% per arena run
+        // while duels paid 10%.
         this.stats.logRunToSupabase('arena', this.stats.getSessionWPM(), this.stats.getAccuracy(), this.stats.score);
 
         if (this.onGameOver) {
