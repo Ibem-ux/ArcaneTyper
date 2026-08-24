@@ -1,5 +1,6 @@
 import { FloatingText } from '../FloatingText.js';
 import { Projectile } from '../Projectile.js';
+import { Particle } from '../Particle.js';
 
 export class InputHandler {
     constructor(game) {
@@ -80,12 +81,42 @@ export class InputHandler {
                 // Word fully typed — trigger death animation
                 this.game.stats.addScore(word.text.length, true, word.mistakesMade === 0);
                 word.dying = true; // Let the animation play instead of instant splice
+                // Set character-specific death visual style
+                const charForDeath = this.game.stats.selectedCharacter;
+                if (charForDeath === 'gojo') word.deathStyle = 'purple';
+                else if (charForDeath === 'sukuna') word.deathStyle = 'slash';
                 this.game.audio.playExplosion();
                 this.game.floatingTexts.push(new FloatingText(`+${word.text.length * 10}`, word.x, word.y - 15 * word.scale, "#00e5ff", 28));
 
-                // Increase explosion size based on combo
+                // Character-specific word death effects
                 const comboBonus = Math.min(this.game.stats.combo, 50) / 50;
-                this.game.combatSystem.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors, comboBonus);
+                const selectedChar = this.game.stats.selectedCharacter;
+
+                if (selectedChar === 'gojo') {
+                    // Hollow Purple explosion — purple/cyan particles override element colors
+                    this.game.combatSystem.spawnExplosion(word.x, word.y + 15 * word.scale, 
+                        { particles: ['#e040fb', '#d500f9', '#00e5ff', '#aa00ff', '#ffffff'] }, comboBonus + 0.3);
+                } else if (selectedChar === 'sukuna') {
+                    // Dismantle slash — slash lines cut through the word, then crimson explosion
+                    const slashCount = 2 + Math.floor(Math.random() * 2); // 2-3 slashes
+                    for (let sl = 0; sl < slashCount; sl++) {
+                        const slAngle = -0.8 + Math.random() * 1.6;
+                        const slColor = Math.random() > 0.3 ? '#ff1744' : '#ffea00';
+                        this.game.particles.push(new Particle(word.x, word.y + 15 * word.scale, {
+                            type: 'slash_line',
+                            color: slColor,
+                            angle: slAngle,
+                            length: 50 + Math.random() * 40,
+                            width: 2 + Math.random() * 1.5
+                        }));
+                    }
+                    this.game.combatSystem.spawnExplosion(word.x, word.y + 15 * word.scale,
+                        { particles: ['#ff1744', '#d50000', '#ffea00', '#212121'] }, comboBonus * 0.6);
+                } else {
+                    // Default wizard — element-colored explosion
+                    this.game.combatSystem.spawnExplosion(word.x, word.y + 15 * word.scale, word.elementColors, comboBonus);
+                }
+
                 this.game.playerAnimTimer = 200;
                 this.game.combatSystem.triggerShake(4 + comboBonus * 4, 150 + comboBonus * 100);
 
@@ -141,8 +172,22 @@ export class InputHandler {
                         colors = ['#ff1744', '#ffea00'];
                     }
                     
-                    const projectile = new Projectile(startX, startY, this.game.boss.x + targetXOffset, this.game.boss.y + 20, colors, type);
-                    this.game.projectiles.push(projectile);
+                    if (selectedChar === 'sukuna') {
+                        // Dismantle barrage — fire 3 rapid slash projectiles with slight offsets
+                        for (let si = 0; si < 3; si++) {
+                            const offsetX = (si - 1) * 8;
+                            const offsetY = si * 4;
+                            const projectile = new Projectile(
+                                startX + offsetX, startY + offsetY,
+                                this.game.boss.x + targetXOffset + offsetX, this.game.boss.y + 20,
+                                colors, type
+                            );
+                            this.game.projectiles.push(projectile);
+                        }
+                    } else {
+                        const projectile = new Projectile(startX, startY, this.game.boss.x + targetXOffset, this.game.boss.y + 20, colors, type);
+                        this.game.projectiles.push(projectile);
+                    }
                 }
 
                 // Release targeting immediately so player can type next word

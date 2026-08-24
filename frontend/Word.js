@@ -111,6 +111,7 @@ export class Word {
         this.deathTimer = 0;
         this.deathDuration = 200; // ms
         this.deathScale = 1.0; // scale multiplier during death
+        this.deathStyle = 'default'; // 'default' | 'purple' | 'slash'
     }
 
     update(dt) {
@@ -281,6 +282,52 @@ export class Word {
             }
 
             ctx.fillText(this.untyped, startX + this._cachedTypedWidth, textYOffset);
+        }
+
+        // Character-specific death visuals
+        if (this.dying) {
+            const deathProgress = Math.min(1, this.deathTimer / this.deathDuration);
+
+            if (this.deathStyle === 'slash') {
+                // Sukuna: Red slash lines cut across the word
+                ctx.save();
+                ctx.globalAlpha = 1.0 - deathProgress * 0.5;
+                ctx.strokeStyle = '#ff1744';
+                ctx.shadowColor = '#ff1744';
+                ctx.shadowBlur = 12;
+                ctx.lineWidth = 3 * (1 - deathProgress);
+                ctx.lineCap = 'round';
+
+                // Diagonal slash across the word box
+                const slashExtend = deathProgress * 30;
+                ctx.beginPath();
+                ctx.moveTo(boxX - 10 - slashExtend, textYOffset - 20 - slashExtend * 0.3);
+                ctx.lineTo(boxX + boxWidth + 10 + slashExtend, textYOffset + 20 + slashExtend * 0.3);
+                ctx.stroke();
+
+                // Second cross slash
+                ctx.globalAlpha = (1.0 - deathProgress) * 0.7;
+                ctx.beginPath();
+                ctx.moveTo(boxX - 5 - slashExtend * 0.5, textYOffset + 15 + slashExtend * 0.2);
+                ctx.lineTo(boxX + boxWidth + 5 + slashExtend * 0.5, textYOffset - 15 - slashExtend * 0.2);
+                ctx.stroke();
+                ctx.restore();
+            } else if (this.deathStyle === 'purple') {
+                // Gojo: Purple energy glow overtakes the word
+                ctx.save();
+                ctx.globalAlpha = (1 - deathProgress) * 0.6;
+                ctx.fillStyle = '#e040fb';
+                ctx.shadowColor = '#e040fb';
+                ctx.shadowBlur = 20 * (1 - deathProgress);
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(boxX - 3, boxY - 3, boxWidth + 6, boxHeight + 6, 8);
+                } else {
+                    ctx.rect(boxX - 3, boxY - 3, boxWidth + 6, boxHeight + 6);
+                }
+                ctx.fill();
+                ctx.restore();
+            }
         }
 
         ctx.restore();

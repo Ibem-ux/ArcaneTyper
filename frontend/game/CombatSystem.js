@@ -1,5 +1,6 @@
 import { Particle } from '../Particle.js';
 import { FloatingText } from '../FloatingText.js';
+import { Projectile } from '../Projectile.js';
 
 export class CombatSystem {
     constructor(game) {
@@ -38,28 +39,91 @@ export class CombatSystem {
         this.game.combatSystem.triggerShake(35, 900);
 
         const selectedChar = this.game.stats.selectedCharacter;
+        const cw = this.game.canvas.width;
+        const ch = this.game.canvas.height;
+        const cx = cw / 2;
+        const cy = ch / 2;
+
         if (selectedChar === 'gojo') {
+            // === HOLLOW PURPLE — Enhanced with Unlimited Void ===
+
+            // Trigger Unlimited Void domain overlay
+            this.game.domainType = 'void';
+            this.game.domainTimer = this.game.domainDuration;
+            this.game.domainAlpha = 0;
+
             // Flash screen purple
             this.game.ctx.fillStyle = 'rgba(224, 64, 251, 0.85)';
-            this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+            this.game.ctx.fillRect(0, 0, cw, ch);
 
-            // Purple and cyan explosion
-            this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#d500f9', '#00e5ff', '#ffffff', '#aa00ff'] }, 5.5);
-            this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave_purple'));
-            
+            // Enhanced purple/cyan/white particle burst (larger count)
+            this.spawnExplosion(cx, cy, { particles: ['#d500f9', '#00e5ff', '#ffffff', '#aa00ff', '#e040fb'] }, 7.0);
+            this.game.particles.push(new Particle(cx, cy, 'shockwave_purple'));
+
+            // Spinning purple vortex particles (ring of purple orbs around center)
+            for (let v = 0; v < 12; v++) {
+                const vAngle = (v / 12) * Math.PI * 2;
+                const vr = 30 + Math.random() * 20;
+                const vx = cx + Math.cos(vAngle) * vr;
+                const vy = cy + Math.sin(vAngle) * vr;
+                const p = new Particle(vx, vy, Math.random() > 0.5 ? '#e040fb' : '#aa00ff');
+                p.size = 3 + Math.random() * 3;
+                p.life = 1.2;
+                this.game.particles.push(p);
+            }
+
+            // Full-screen purple energy beam (horizontal slash line particle)
+            this.game.particles.push(new Particle(cx, cy, {
+                type: 'slash_line',
+                color: '#e040fb',
+                angle: 0,
+                length: cw * 0.9,
+                width: 4
+            }));
+
             // Hollow Purple title
-            this.game.floatingTexts.push(new FloatingText("HOLLOW PURPLE", this.game.canvas.width / 2, this.game.canvas.height / 2 - 55, "#e040fb", 42));
+            this.game.floatingTexts.push(new FloatingText("HOLLOW PURPLE", cx, cy - 55, "#e040fb", 42));
+
         } else if (selectedChar === 'sukuna') {
+            // === MALEVOLENT SHRINE — Enhanced with domain + slash rain + cleave ===
+
+            // Trigger Malevolent Shrine domain overlay
+            this.game.domainType = 'shrine';
+            this.game.domainTimer = this.game.domainDuration;
+            this.game.domainAlpha = 0;
+
             // Flash screen red
             this.game.ctx.fillStyle = 'rgba(255, 23, 68, 0.85)';
-            this.game.ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+            this.game.ctx.fillRect(0, 0, cw, ch);
 
-            // Crimson and dark slash explosion
-            this.spawnExplosion(this.game.canvas.width / 2, this.game.canvas.height / 2, { particles: ['#ff1744', '#212121', '#ffc107', '#d50000'] }, 5.5);
-            this.game.particles.push(new Particle(this.game.canvas.width / 2, this.game.canvas.height / 2, 'shockwave_red'));
+            // Enhanced crimson/black/gold particle burst
+            this.spawnExplosion(cx, cy, { particles: ['#ff1744', '#212121', '#ffc107', '#d50000', '#b71c1c'] }, 7.0);
+            this.game.particles.push(new Particle(cx, cy, 'shockwave_red'));
+
+            // Rain of slashes — 18 slash lines from random positions across screen
+            for (let s = 0; s < 18; s++) {
+                const sx = Math.random() * cw;
+                const sy = Math.random() * ch * 0.7;
+                const sAngle = -Math.PI / 4 + Math.random() * Math.PI / 2;
+                const sColor = Math.random() > 0.3 ? '#ff1744' : '#ffc107';
+                this.game.particles.push(new Particle(sx, sy, {
+                    type: 'slash_line',
+                    color: sColor,
+                    angle: sAngle,
+                    length: 40 + Math.random() * 60,
+                    width: 1.5 + Math.random() * 2
+                }));
+            }
+
+            // Massive full-width Cleave projectile across the center
+            const cleave = new Projectile(
+                0, cy, cw, cy,
+                ['#ff1744', '#ffea00'], 'sukuna_cleave'
+            );
+            this.game.projectiles.push(cleave);
 
             // Malevolent Shrine title
-            this.game.floatingTexts.push(new FloatingText("MALEVOLENT SHRINE", this.game.canvas.width / 2, this.game.canvas.height / 2 - 55, "#ff1744", 42));
+            this.game.floatingTexts.push(new FloatingText("MALEVOLENT SHRINE", cx, cy - 55, "#ff1744", 42));
         } else {
             // Flash screen blue/cyan
             this.game.ctx.fillStyle = 'rgba(0, 229, 255, 0.9)';

@@ -45,21 +45,72 @@ export class Projectile {
         ctx.save();
 
         if (this.type === 'sukuna_slash') {
-            // Draw a curved slash line
+            // Dismantle barrage — draw 3 thin parallel slash lines
             ctx.globalAlpha = 1.0;
             ctx.strokeStyle = this.colors[0];
             ctx.shadowColor = this.colors[0];
-            ctx.shadowBlur = 15;
-            ctx.lineWidth = 3;
+            ctx.shadowBlur = 12;
             ctx.lineCap = 'round';
             
-            // Calculate angle of movement and draw crescent
             const angle = Math.atan2(this.vy, this.vx);
             ctx.translate(this.x, this.y);
-            ctx.rotate(angle + Math.PI / 2); // perpendicular to path
+            ctx.rotate(angle + Math.PI / 2);
             
+            // Draw 3 thin slash arcs with slight offsets
+            for (let i = -1; i <= 1; i++) {
+                const offset = i * 6;
+                const slashWidth = i === 0 ? 2.5 : 1.5;
+                ctx.lineWidth = slashWidth;
+                ctx.beginPath();
+                ctx.arc(offset, 0, 12, -Math.PI / 3, Math.PI / 3);
+                ctx.stroke();
+            }
+            
+            // Bright white core on center slash
+            ctx.strokeStyle = '#ffffff';
+            ctx.shadowBlur = 6;
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.arc(0, 0, 15, -Math.PI / 4, Math.PI / 4);
+            ctx.arc(0, 0, 12, -Math.PI / 4, Math.PI / 4);
+            ctx.stroke();
+            
+            ctx.restore();
+            return;
+        }
+
+        if (this.type === 'sukuna_cleave') {
+            // Massive full-width Cleave slash — a thick brilliant line
+            ctx.globalAlpha = 1.0;
+            
+            const angle = Math.atan2(this.vy, this.vx);
+            ctx.translate(this.x, this.y);
+            ctx.rotate(angle + Math.PI / 2);
+            
+            // Outer glow slash
+            ctx.strokeStyle = this.colors[0];
+            ctx.shadowColor = this.colors[0];
+            ctx.shadowBlur = 25;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(0, 0, 25, -Math.PI / 3, Math.PI / 3);
+            ctx.stroke();
+            
+            // Inner bright core
+            ctx.strokeStyle = '#ffea00';
+            ctx.shadowColor = '#ffea00';
+            ctx.shadowBlur = 15;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, 25, -Math.PI / 4, Math.PI / 4);
+            ctx.stroke();
+            
+            // White hot center
+            ctx.strokeStyle = '#ffffff';
+            ctx.shadowBlur = 8;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 25, -Math.PI / 6, Math.PI / 6);
             ctx.stroke();
             
             ctx.restore();
