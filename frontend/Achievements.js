@@ -2,7 +2,7 @@ export class Achievements {
     constructor(audioController) {
         this.audio = audioController;
         this.unlocked = new Set();
-        
+
         // Load from local storage for now (Sync to Supabase later if requested)
         const saved = localStorage.getItem('typerMaster_achievements');
         if (saved) {
@@ -14,15 +14,11 @@ export class Achievements {
             }
         }
 
-        // Setup dynamic has method to unlock everything for admin
-        const originalHas = this.unlocked.has;
-        this.unlocked.has = (id) => {
-            const mageName = localStorage.getItem('typerMaster_mageName');
-            if (mageName && mageName.toLowerCase().trim().includes('admin')) {
-                return true;
-            }
-            return originalHas.call(this.unlocked, id);
-        };
+        // Admin override predicate. Stats binds this to its restricted
+        // isAdmin() check once constructed (ROADMAP Bug #1B decision):
+        // authenticated non-guest session with the exact mage name "admin".
+        // Defaults to false so a bare Achievements instance never bypasses.
+        this.adminPredicate = () => false;
 
         // Achievement definitions
         this.definitions = {
@@ -85,16 +81,14 @@ export class Achievements {
     }
 
     getUnlockedTitles() {
-        const mageName = localStorage.getItem('typerMaster_mageName');
-        if (mageName && mageName.toLowerCase().trim().includes('admin')) {
+        if (this.adminPredicate()) {
             return Object.values(this.definitions).map(def => def.title);
         }
         return Array.from(this.unlocked).map(id => this.definitions[id].title);
     }
-    
+
     getUnlockedAchievements() {
-        const mageName = localStorage.getItem('typerMaster_mageName');
-        if (mageName && mageName.toLowerCase().trim().includes('admin')) {
+        if (this.adminPredicate()) {
             return Object.values(this.definitions);
         }
         return Array.from(this.unlocked).map(id => this.definitions[id]);

@@ -31,13 +31,25 @@ export class Stats {
         this.mageClass = localStorage.getItem('typerMaster_mageClass') || 'Novice';
         this.selectedCharacter = localStorage.getItem('typerMaster_selectedCharacter') || 'wizard';
 
+        // True only after a successful authenticated (non-guest) login.
+        // Gates the admin bypass - see AuthUI. Never inferred from mageName alone.
+        this.isAuthenticated = false;
+
+        // Single source of truth for the admin override: Achievements defers
+        // to Stats.isAdmin() so guests can never trigger it (Bug #1B fix).
+        if (this.achievements) {
+            this.achievements.adminPredicate = () => this.isAdmin();
+        }
+
         this.bindDOM();
     }
 
     isAdmin() {
-        if (!this.mageName) return false;
-        const name = this.mageName.toLowerCase().trim();
-        return name === 'admin' || name === 'guest admin' || name.includes('admin');
+        // Restricted admin bypass (ROADMAP Bug #1B decision, 2026-08-24):
+        // requires an authenticated non-guest session AND the exact mage
+        // name "admin" (case-insensitive). Guests never qualify.
+        if (!this.isAuthenticated || !this.mageName) return false;
+        return this.mageName.toLowerCase().trim() === 'admin';
     }
 
     get totalXP() {

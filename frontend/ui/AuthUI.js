@@ -157,6 +157,7 @@ export class AuthUI {
                 return;
             }
             this.isGuest = true;
+            this.game.stats.isAuthenticated = false; // guests never qualify for admin bypass
             this.game.stats.mageName = "Guest " + displayName;
             this.game.stats.saveProgression();
 
@@ -215,6 +216,8 @@ export class AuthUI {
                     return;
                 }
 
+                this.game.stats.isAuthenticated = true;
+
                 if (data.user && data.user.user_metadata && data.user.user_metadata.mage_title) {
                     this.game.stats.mageName = data.user.user_metadata.mage_title;
                 }
@@ -250,6 +253,8 @@ export class AuthUI {
                         return;
                     }
                 } else {
+                    // Real account created - authenticated, non-guest.
+                    this.game.stats.isAuthenticated = true;
                     this.game.stats.mageName = displayName;
                 }
             }
@@ -298,6 +303,8 @@ export class AuthUI {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
+            this.game.stats.isAuthenticated = true;
+
             if (session.user.user_metadata && session.user.user_metadata.mage_title) {
                 this.game.stats.mageName = session.user.user_metadata.mage_title;
                 this.game.stats.saveProgression();
