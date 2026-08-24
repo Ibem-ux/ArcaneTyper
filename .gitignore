@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .env
 
+# Internal documentation lives in the private docs repository (nested clone).
+# This line is the only protection against committing it here - never remove.
+/docs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
