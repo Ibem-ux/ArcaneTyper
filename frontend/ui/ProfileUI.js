@@ -97,5 +97,78 @@ export class ProfileUI {
 
         this.updateProgressionUI();
         this.updateSkinCardsUI();
+        this.drawHistoryChart();
+    }
+
+    // Renders the "WPM History (Last 10 Runs)" panel (AT-M2). Data comes from
+    // a localStorage ring buffer fed by Stats.recordWpm on every run end,
+    // so it works for guests and offline players too.
+    drawHistoryChart() {
+        const canvas = document.getElementById('profile-history-chart');
+        if (!canvas || !this.game.stats || !this.game.stats.getWpmHistory) return;
+
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        const history = this.game.stats.getWpmHistory();
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (history.length === 0) {
+            ctx.fillStyle = '#b892b0';
+            ctx.font = '11px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Complete runs to forge your legend', W / 2, H / 2);
+            return;
+        }
+
+        const pad = 10;
+        const maxWpm = Math.max(...history, 20);
+        const stepX = history.length > 1 ? (W - pad * 2) / (history.length - 1) : 0;
+        const yFor = (wpm) => H - pad - (wpm / maxWpm) * (H - pad * 2);
+
+        // Baseline + peak guide line
+        ctx.strokeStyle = 'rgba(184, 146, 176, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad, H - pad);
+        ctx.lineTo(W - pad, H - pad);
+        ctx.stroke();
+
+        // WPM polyline
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        history.forEach((wpm, i) => {
+            const x = pad + i * stepX;
+            const y = yFor(wpm);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Data points (latest highlighted)
+        history.forEach((wpm, i) => {
+            const x = pad + i * stepX;
+            const y = yFor(wpm);
+            const isLatest = i === history.length - 1;
+            ctx.fillStyle = isLatest ? '#00e5ff' : '#ffd700';
+            ctx.beginPath();
+            ctx.arc(x, y, isLatest ? 4 : 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Latest value label
+        const lastX = pad + (history.length - 1) * stepX;
+        const lastY = yFor(history[history.length - 1]);
+        ctx.fillStyle = '#00e5ff';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`${history[history.length - 1]}`, Math.min(lastX, W - 4), lastY - 6);
     }
 }

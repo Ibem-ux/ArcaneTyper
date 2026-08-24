@@ -289,13 +289,32 @@ export class Stats {
         if (gainedXP > 0) this.addXP(gainedXP);
     }
 
+    // --- Run History Ring Buffer (feeds the profile WPM chart, AT-M2) ---
+    recordWpm(wpm) {
+        if (!wpm || wpm <= 0) return;
+        let history = this.getWpmHistory();
+        history.push(Math.round(wpm));
+        if (history.length > 10) history = history.slice(-10);
+        localStorage.setItem('typerMaster_wpmHistory', JSON.stringify(history));
+    }
+
+    getWpmHistory() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('typerMaster_wpmHistory') || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
     // --- Progression Methods ---
     addXP(amount) {
         this.totalXP += amount;
 
         const oldLevel = this.playerLevel;
-        // Simple level up formula: level = 1 + floor(sqrt(xp / 100))
-        this.playerLevel = 1 + Math.floor(Math.sqrt(this.totalXP / 100));
+        // Canonical level curve (AT-M3): level = 1 + floor(sqrt(xp / 500)).
+        // Matches the constructor, loadFromSupabase and getXPProgress.
+        this.playerLevel = Math.floor(Math.sqrt(this.totalXP / 500)) + 1;
 
         if (this.playerLevel > oldLevel) {
             console.log(`[Stats] Level Up! You are now Level ${this.playerLevel}`);

@@ -409,6 +409,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Scribe Trial ──────────────────────────────────────────────────────────
 
   scribe.onTrialComplete = async (wpm, rawWpm, accuracy, consistency, wpmSamples) => {
+    game.stats.recordWpm(wpm);
+
     // Update accuracy display (already has % in the span)
     const resAcc = document.getElementById('practice-res-acc');
     const resConsistency = document.getElementById('practice-res-consistency');
@@ -666,6 +668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.removeItem('typerMaster_equippedTitle');
       localStorage.removeItem('typerMaster_score');
       localStorage.removeItem('typerMaster_wpm');
+      localStorage.removeItem('typerMaster_wpmHistory');
 
       try {
         const { supabase } = await import('../backend/supabaseClient.js');
@@ -890,6 +893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Save highscore and XP — normally done by triggerGameOver, but duel
     // ends the game directly via stop(), so we must save manually here.
     game.stats.saveHighScore();
+    game.stats.recordWpm(game.stats.getSessionWPM());
 
     // Broadcast defeat/victory to opponent
     if (duel) {
